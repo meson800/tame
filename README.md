@@ -34,7 +34,7 @@ Imagine a directory layout as follows:
 │   ├───GFP.gb
 │   └───GFP.yaml
 ├──microscopy
-│   ├───2020101.yaml
+│   ├───20200101.yaml
 │   ├───green_channel.tif
 │   ├───red_channel.tif
 │   └───overlay.tif
