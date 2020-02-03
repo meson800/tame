@@ -1,4 +1,4 @@
-# take
+# tame
 An unobtrusive YAML based metadata system for arbitrary data management.
 
 ## Rationale
