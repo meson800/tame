@@ -7,7 +7,7 @@ setuptools.setup(
     name="tame",
     version="0.0.1",
     url='https://github.com/meson800/tame',
-    author="Christopher Johnstone"
+    author="Christopher Johnstone",
     author_email="meson800@gmail.com",
     description="A minimal YAML-based metadata management system.",
     license='MIT',
