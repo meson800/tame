@@ -1,3 +1,4 @@
 from yaml import Loader
+from . import dispatch
 
-print('Hello from tame')
+dispatch.dispatch_console()

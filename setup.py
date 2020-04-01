@@ -14,6 +14,11 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["tame"],
+    entry_points={
+        "console_scripts": [
+            "tame=tame.dispatch:dispatch_console"
+            ]
+        },
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Programming Language :: Python :: 3",
