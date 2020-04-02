@@ -5,7 +5,7 @@ with open("README.md" ,"r") as fh:
 
 setuptools.setup(
     name="tame",
-    version="0.0.1",
+    version="0.0.2",
     url='https://github.com/meson800/tame',
     author="Christopher Johnstone",
     author_email="meson800@gmail.com",
