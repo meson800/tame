@@ -1,7 +1,21 @@
+"""
+Includes key shared functions used by other internal Tame modules.
+
+Available under the MIT license.
+Copyright (c) 2020 Christopher Johnstone
+"""
 import os
 
 class UntrackedRepositoryError(RuntimeError):
-    pass
+    """
+    Runtime error thrown when the root tame.yaml file
+    was not found.
+
+    Like git, we want to restrict tracked metadata to
+    a certain overall directory (repository). We mark
+    the top-level directory in the repository with a
+    tame.yaml file.
+    """
 
 def find_root_yaml(path=None):
     """
@@ -12,7 +26,6 @@ def find_root_yaml(path=None):
     Args:
         path: path-like object (str, bytes) to start the recursive search.
               Defaults to the current working directory if not set.
-    
     Returns:
         A path-like object to the root file.
 
@@ -26,8 +39,8 @@ def find_root_yaml(path=None):
     while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
         up_dir = os.path.join(current_dir, os.pardir)
         # Make sure we didn't reach the filesystem root
-        if os.path.samefile(os.path.realpath(up_dir), 
-                os.path.realpath(current_dir)):
+        if os.path.samefile(os.path.realpath(up_dir),
+                            os.path.realpath(current_dir)):
             raise UntrackedRepositoryError("No root 'tame.yaml' file found")
         # otherwise, continue searching
         current_dir = up_dir
