@@ -6,6 +6,7 @@ Copyright (c) 2020 Christopher Johnstone
 """
 import os
 
+
 class UntrackedRepositoryError(RuntimeError):
     """
     Runtime error thrown when the root tame.yaml file
@@ -16,6 +17,7 @@ class UntrackedRepositoryError(RuntimeError):
     the top-level directory in the repository with a
     tame.yaml file.
     """
+
 
 def find_root_yaml(path=None):
     """

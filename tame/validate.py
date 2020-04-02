@@ -10,15 +10,18 @@ from yaml import Loader
 
 from . import core
 
+
 def _init_argparse_(subparser):
     subparser.add_argument('path', help='File or directory to validate.\
             All YAML files found recursively from this directory are validated')
     subparser.add_argument('-m', '--metadata-only', action='store_true', help='\
             does not attempt to validate the presence of linked files')
 
+
 def _dispatch_validate_(args):
     """Calls our internal API using provided command line args"""
     validate_path(args.path, args.metadata_only)
+
 
 def validate_path(path, metadata_only=False):
     """

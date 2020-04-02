@@ -28,6 +28,7 @@ If you did want to track metadata, add a (possibly empty) tame.yaml
 file to the most top-level directory from which you want to track.
 """
 
+
 def dispatch_console():
     """
     Entry point called when 'tame' is run.
@@ -39,13 +40,13 @@ def dispatch_console():
                         + pkg_resources.require('tame')[0].version)
     subparsers = parser.add_subparsers(dest='subcommand', metavar='<command>')
     validate_subparser = subparsers.add_parser('validate')
-    validate._init_argparse_(validate_subparser) # pylint: disable=protected-access
+    validate._init_argparse_(validate_subparser)  # pylint: disable=protected-access
 
     args = parser.parse_args()
 
     try:
         if args.subcommand == 'validate':
-            validate._dispatch_validate_(args) # pylint: disable=protected-access
+            validate._dispatch_validate_(args)  # pylint: disable=protected-access
         else:
             parser.print_help()
             print(EXTENDED_HELP_MESSAGE)
