@@ -1,6 +1,6 @@
 import setuptools
 
-with open("README.md" ,"r") as fh:
+with open("README.md" ,"r", encoding='utf8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -14,6 +14,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["tame"],
+    package_dir={'': 'src'},
     entry_points={
         "console_scripts": [
             "tame=tame.dispatch:dispatch_console"
