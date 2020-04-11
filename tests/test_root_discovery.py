@@ -20,7 +20,7 @@ def test_root_not_found(tmpdir):
     when tame.yaml does not exist
     """
     with pytest.raises(tame.core.UntrackedRepositoryError):
-        print(tame.core.find_root_yaml(tmpdir))
+        print(tame.core.find_root_yaml(tmpdir.strpath))
 
 def test_find_root_recursive(tmpdir):
     """
