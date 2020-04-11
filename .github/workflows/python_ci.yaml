@@ -31,3 +31,7 @@ jobs:
       run: |
           pip install pylint
           pylint --exit-zero tame
+    - name: Run test suite
+      run: |
+          pip install pytest
+          pytest
