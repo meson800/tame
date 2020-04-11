@@ -36,7 +36,11 @@ def find_root_yaml(path=None):
     """
     if path is None:
         path = os.getcwd()
-    current_dir = os.path.dirname(path)
+    # Keep path as-is if we were passed a directory
+    if os.path.isdir(path):
+        current_dir = path
+    else:
+        current_dir = os.path.dirname(path)
 
     while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
         up_dir = os.path.join(current_dir, os.pardir)
