@@ -6,7 +6,7 @@ and track currently included files.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-from yaml import Loader
+import os
 
 from . import core
 
@@ -43,4 +43,9 @@ def validate_path(path, metadata_only=False):
     Raises:
         UntrackedRepositoryError: If the given path is not within a tracked repository.
     """
-    print(core.find_root_yaml(path))
+    root = core.find_root_yaml(path)
+
+    # If this is a file, attempt to validate it
+    if os.path.isfile(path):
+        core.Metadata(filename=path)
+
