@@ -45,7 +45,6 @@ class Metadata:
     - uid (optional): A name for this metadata that is enforced to be unique.
     - parent (optional): A list of different parent metadata files
     """
-    
     def __init__(self, yaml_source=None, filename=None):
         """
         Given a YAML document, constructs a Metadata object. The loaded
@@ -69,16 +68,17 @@ class Metadata:
         if yaml_source is None and filename is None:
             raise RuntimeError('Must specify yaml source or filename to load function!')
         if yaml_source is None:
-            with open(filename) as f:
-                yaml_source = f.read()
+            with open(filename) as yaml_file:
+                yaml_source = yaml_file.read()
         # Read in with pyyaml
         yaml_dict = yaml.safe_load(yaml_source)
 
-        if 'type' not in yaml_dict or not isinstance(yaml_dict['type'],str):
+        if 'type' not in yaml_dict or not isinstance(yaml_dict['type'], str):
             raise InconsistentMetadataError('Type of metadata must be provided' +
-                    ' as a string')
+                                            ' as a string')
         # Setup default arguments
         self.type = yaml_dict['type']
+        del yaml_dict['type']
         self.name = ''
         self.uid = ''
         self.parent = {}
@@ -87,23 +87,28 @@ class Metadata:
         if 'name' in yaml_dict:
             if not isinstance(yaml_dict['name'], str):
                 raise InconsistentMetadataError(
-                        'name key is special: value must be provided as a string')
+                    'name key is special: value must be provided as a string')
             self.name = yaml_dict['name']
+            del yaml_dict['name']
         if 'uid' in yaml_dict:
             if not isinstance(yaml_dict['uid'], str):
                 raise InconsistentMetadataError(
-                        'uid key is special: value must be provided as a string')
+                    'uid key is special: value must be provided as a string')
             self.uid = yaml_dict['uid']
+            del yaml_dict['uid']
         if 'parent' in yaml_dict:
             if not isinstance(yaml_dict['parent'], list):
                 raise InconsistentMetadataError(
-                        'parent key is special: value must be provided as a list')
+                    'parent key is special: value must be provided as a list')
             self.parent = yaml_dict['parent']
+            del yaml_dict['parent']
         if 'files' in yaml_dict:
             if not isinstance(yaml_dict['files'], list):
                 raise InconsistentMetadataError(
-                        'files key is special: value must be provided as a list')
+                    'files key is special: value must be provided as a list')
             self.files = yaml_dict['files']
+            del yaml_dict['files']
+        self.
 
 def find_root_yaml(path=None):
     """
