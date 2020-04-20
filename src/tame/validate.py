@@ -48,4 +48,3 @@ def validate_path(path, metadata_only=False):
     # If this is a file, attempt to validate it
     if os.path.isfile(path):
         core.Metadata(filename=path)
-
