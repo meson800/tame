@@ -128,17 +128,21 @@ def find_root_yaml(path=None):
     if path is None:
         path = os.getcwd()
     # Keep path as-is if we were passed a directory
-    if os.path.isdir(path):
-        current_dir = path
-    else:
-        current_dir = os.path.dirname(path)
+    try:
+        if os.path.isdir(path):
+            current_dir = path
+        else:
+            current_dir = os.path.dirname(path)
 
-    while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
-        up_dir = os.path.join(current_dir, os.pardir)
-        # Make sure we didn't reach the filesystem root
-        if os.path.samefile(os.path.realpath(up_dir),
-                            os.path.realpath(current_dir)):
-            raise UntrackedRepositoryError("No root 'tame.yaml' file found")
-        # otherwise, continue searching
-        current_dir = up_dir
-    return os.path.join(current_dir, 'tame.yaml')
+        while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
+            up_dir = os.path.join(current_dir, os.pardir)
+            # Make sure we didn't reach the filesystem root
+            if os.path.samefile(os.path.realpath(up_dir),
+                                os.path.realpath(current_dir)):
+                raise UntrackedRepositoryError("No root 'tame.yaml' file found")
+            # otherwise, continue searching
+            current_dir = up_dir
+        return os.path.join(current_dir, 'tame.yaml')
+    except PermissionError as e:
+        print(e)
+        raise UntrackedRepositoryError("No root 'tame.yaml' found due to permission denied error")

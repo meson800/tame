@@ -1,4 +1,5 @@
 import os
+import sys
 import pytest
 
 import tame.core
@@ -34,3 +35,19 @@ def test_find_root_recursive(tmpdir):
     print(tame.core.find_root_yaml(os.path.join(tmpdir.strpath, 'nested')))
     print(tame.core.find_root_yaml(os.path.join(tmpdir.strpath, 'nested', 'deeply')))
     print(tame.core.find_root_yaml(os.path.join(tmpdir.strpath, 'nested', 'metadata.yaml')))
+
+def test_permission_denied(tmpdir):
+    """
+    Makes sure that we correctly stop searching upward if we reach a
+    directory without read permission
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip('Unable to modify file permissions on Windows')
+    os.makedirs(os.path.join(tmpdir.strpath, 'nested', 'again'))
+    touch(os.path.join(tmpdir.strpath, 'tame.yaml'))
+    touch(os.path.join(tmpdir.strpath, 'nested', 'again', 'test.yaml'))
+    os.chmod(os.path.join(tmpdir.strpath, 'tame.yaml'), 0o000)
+    os.chmod(tmpdir.strpath, 0o000)
+    with pytest.raises(tame.core.UntrackedRepositoryError):
+        print(tame.core.find_root_yaml(os.path.join(tmpdir.strpath, 'nested', 'again', 'test.yaml')))
+
