@@ -81,4 +81,16 @@ def test_parent_required_as_list():
     with pytest.raises(tame.core.InconsistentMetadataError):
         meta = tame.core.Metadata(yaml_source=yaml)
 
+def test_user_key_loading():
+    """
+    Ensure that user keyvalue pairs are loaded properly.
+    """
+    yaml = """
+    type: test
+    user: userval
+    """
+    meta = tame.core.Metadata(yaml_source=yaml)
+    assert 'user' in meta.data
+    assert meta.data['user'] == 'userval'
+
 
