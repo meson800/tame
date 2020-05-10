@@ -108,7 +108,8 @@ class Metadata:
                     'files key is special: value must be provided as a list')
             self.files = yaml_dict['files']
             del yaml_dict['files']
-        self.
+        # Set remaining user metadata
+        self.data = yaml_dict
 
 def find_root_yaml(path=None):
     """
