@@ -11,7 +11,7 @@ def init_cache(tmpdir):
     that encodes the MetadataCache object and a Path-ified
     version of tmpdir, after creating the root.yaml file
     """
-    tmpdir = Path(tmpdir)
+    tmpdir = Path(tmpdir.strpath)
     touch(tmpdir / 'root.yaml')
     cache = tame.core.MetadataCache(tmpdir / 'root.yaml')
     return (tmpdir, cache)
