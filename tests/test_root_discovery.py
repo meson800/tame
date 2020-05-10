@@ -4,10 +4,7 @@ import pytest
 
 import tame.core
 
-def touch(filename):
-    """Creates the desired file by writing a newline"""
-    with open(filename, 'w') as f:
-        f.write('\n')
+from test_helpers import touch
 
 def test_simple_find_root(tmpdir):
     """Tests if a simple flat hierarchy tame.yaml file is found"""

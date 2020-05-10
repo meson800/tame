@@ -100,7 +100,7 @@ class Metadata:
             if not isinstance(yaml_dict['parent'], list):
                 raise InconsistentMetadataError(
                     'parent key is special: value must be provided as a list')
-            self.parent = yaml_dict['parent']
+            self.parent = set(yaml_dict['parent'])
             del yaml_dict['parent']
         if 'files' in yaml_dict:
             if not isinstance(yaml_dict['files'], list):

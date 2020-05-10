@@ -1,0 +1,84 @@
+import os
+import sys
+import pytest
+
+import tame.core
+
+from test_helpers import touch
+
+def test_barebones_file(tmpdir):
+    """
+    Ensures that we can load a metadata
+    file with the minimum required metadata
+    entries, a type.
+    """
+    tmpdir = tmpdir.strpath
+
+    touch(os.path.join(tmpdir, 'root.yaml'))
+    with open(os.path.join(tmpdir, 'simple.yaml'), 'w') as f:
+        f.write('type: test')
+    meta = tame.core.Metadata(filename=os.path.join(tmpdir, 'simple.yaml'))
+    assert meta.type == 'test'
+
+def test_barebones_yaml_source():
+    """
+    Same test as 'test_barebones_file', except checking
+    that we recognize directly written yaml source
+    """
+    yaml = 'type: test'
+    meta = tame.core.Metadata(yaml_source=yaml)
+    assert meta.type == 'test'
+
+def test_type_required():
+    """
+    Ensures that a YAML file without a type key fails
+    validation.
+    """
+    yaml = 'name: foo\nuid: bar\n'
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
+
+def test_special_keyvalues():
+    """
+    Ensures that all special keyvalue pairs are recognized.
+    These are type, files, name, uid, parent.
+    """
+    yaml = """
+    type: test
+    name: foo
+    uid: bar
+    files:
+      - test_file.yaml
+    parent: 
+      - foobar
+    """
+    meta = tame.core.Metadata(yaml_source=yaml)
+    assert meta.type == 'test'
+    assert meta.name == 'foo'
+    assert meta.uid == 'bar'
+    assert meta.files == ['test_file.yaml']
+    assert meta.parent == {'foobar'}
+
+def test_files_required_as_list():
+    """
+    Ensures that the 'files' key must be passed as a list
+    """
+    yaml = """
+    type: test
+    files: foobar
+    """
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
+
+def test_parent_required_as_list():
+    """
+    Ensures that the 'parent' key is passed as a list
+    """
+    yaml = """
+    type: test
+    parent: foobar
+    """
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
+
+
