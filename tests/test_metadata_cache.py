@@ -23,7 +23,7 @@ def test_simple_cache_loading(tmpdir):
     """
     tmpdir, cache = init_cache(tmpdir)
 
-    with open(tmpdir / 'test.yaml', 'w') as f:
+    with open(str(tmpdir / 'test.yaml'), 'w') as f:
         f.write("""
         type: foo
         name: bar
@@ -38,13 +38,13 @@ def test_uid_collision(tmpdir):
     """
     tmpdir, cache = init_cache(tmpdir)
 
-    with open(tmpdir / 'test1.yaml', 'w') as f:
+    with open(str(tmpdir / 'test1.yaml'), 'w') as f:
         f.write("""
         type: foo
         uid: bar
         userkey1: userval1
         """)
-    with open(tmpdir / 'test2.yaml', 'w') as f:
+    with open(str(tmpdir / 'test2.yaml'), 'w') as f:
         f.write("""
         type: foo
         uid: bar
@@ -61,22 +61,22 @@ def test_non_uid_collisions(tmpdir):
     """
     tmpdir, cache = init_cache(tmpdir)
 
-    with open(tmpdir / 'test1.yaml', 'w') as f:
+    with open(str(tmpdir / 'test1.yaml'), 'w') as f:
         f.write("""
         type: foo
         uid: test
         """)
-    with open(tmpdir / 'test2.yaml', 'w') as f:
+    with open(str(tmpdir / 'test2.yaml'), 'w') as f:
         f.write("""
         type: bar
         uid: test
         """)
-    with open(tmpdir / 'test3.yaml', 'w') as f:
+    with open(str(tmpdir / 'test3.yaml'), 'w') as f:
         f.write("""
         type: baz
         userkey1: userval1
         """)
-    with open(tmpdir / 'test4.yaml', 'w') as f:
+    with open(str(tmpdir / 'test4.yaml'), 'w') as f:
         f.write("""
         type: baz
         userkey1: userval1
@@ -93,17 +93,17 @@ def test_name_noncollision(tmpdir):
     """
     tmpdir, cache = init_cache(tmpdir)
 
-    with open(tmpdir / 'test1.yaml', 'w') as f:
+    with open(str(tmpdir / 'test1.yaml'), 'w') as f:
         f.write("""
         type: foo
         name: bar
         """)
-    with open(tmpdir / 'test2.yaml', 'w') as f:
+    with open(str(tmpdir / 'test2.yaml'), 'w') as f:
         f.write("""
         type: foo
         name: bar
         """)
-    with open(tmpdir / 'test3.yaml', 'w') as f:
+    with open(str(tmpdir / 'test3.yaml'), 'w') as f:
         f.write("""
         type: foo
         name: bar
