@@ -74,7 +74,7 @@ class Metadata:
         if yaml_source is None and filename is None:
             raise RuntimeError('Must specify yaml source or filename to load function!')
         if yaml_source is None:
-            with open(filename) as yaml_file:
+            with open(str(filename)) as yaml_file:
                 yaml_source = yaml_file.read()
         # Read in with pyyaml
         yaml_dict = yaml.safe_load(yaml_source)
@@ -145,7 +145,7 @@ class MetadataCache:
         """
         self.root_filename = Path(root)
         self.root_dir = Path(root).parent
-        with open(self.root_filename) as f:
+        with open(str(self.root_filename)) as f:
             self.root_settings = yaml.safe_load(f.read())
 
         self._cache = []
