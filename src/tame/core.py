@@ -189,8 +189,9 @@ class MetadataCache:
         if m_uid:
             if m_uid in self._type_table[m_type]['uid']:
                 raise InconsistentMetadataError(
-                        f'Metadata with type={m_type}, UID={m_uid}' +
-                        ' does not have a unique type/UID pair!')
+                        ('Metadata with type={}, UID={}' +
+                        ' does not have a unique type/UID pair!').format(
+                        m_type, m_uid))
             self._type_table[m_type]['uid'][m_uid] = new_index
 
         # Add to the name lookup table (if we have a name)
