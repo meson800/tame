@@ -5,7 +5,13 @@ Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
 import os
+from pathlib import Path
 import yaml
+
+try:
+    from os import scandir, walk
+except ImportError:
+    from scandir import scandir, walk
 
 
 class UntrackedRepositoryError(RuntimeError):
@@ -23,13 +29,13 @@ class InconsistentMetadataError(RuntimeError):
     """
     Runtime error thrown when a loaded piece of metadata
     is either not valid YAML or does not follow the TAME
-    syntax.
+    rules.
     """
 
-class MissingParentError(RuntimeError):
+class LookupError(RuntimeError):
     """
-    Runtime error thrown when metadata attempts to
-    reference a missing parent piece of metadata
+    Runtime error thrown when a lookup for a piece
+    of metadata fails, often through a missing parent
     """
 
 class Metadata:
@@ -111,6 +117,117 @@ class Metadata:
         # Set remaining user metadata
         self.data = yaml_dict
 
+class MetadataCache:
+    """
+    Class that represents a cache of metadata objects. This class
+    stores Metadata objects, indexed by filename (from the root), name,
+    and by UID.
+
+    Key to using this cache is the 'lookup' function, which either gets a
+    loaded metadata object from the cache, or attempts to search the metadata
+    repository for the desired object.
+
+    Objects are stored internally through a layer of indirection; each is
+    stored indexed in a list. Lookups are facilitated
+    primarily by a type dictionary, which contains subdictionaries:
+    a name dictionary (storing _lists_ of metadata objects) and a UID
+    dictionary (must store single indicies). There is a separate filename
+    dictionary.
+    """
+    def __init__(self, root):
+        """
+        Given a path to the root file, constructs the internal
+        structures needed for the cache.
+
+        Args:
+        -----
+        root: A path-like object encoding the filename of the root.yaml file
+        """
+        self.root_filename = Path(root)
+        self.root_dir = Path(root).parent
+        with open(self.root_filename) as f:
+            self.root_settings = yaml.safe_load(f.read())
+
+        self._cache = []
+        self._filename_table = {}
+        self._type_table = {}
+
+    def add_metadata(self, filename):
+        """
+        Given a filename, reads the metadata at that file
+        and adds it to the internal caches.
+
+        If that metadata file has already been loaded, we silently
+        skip loading.
+
+        Args:
+        -----
+        filename: A Path object containing a filename of a metadata
+            file to load, specified relative to the directory including
+            the root.
+        """
+        # Skip if we've already loaded this piece of metdata.
+        if filename in self._filename_table:
+            return
+
+        # Otherwise, attempt to load it
+        new_metadata = Metadata(filename=self.root_dir / filename)
+
+        new_index = len(self._cache)
+        self._cache.append(new_metadata)
+
+        # Create subdictionaries if necessary
+        m_type = new_metadata.type
+        m_name = new_metadata.name
+        m_uid = new_metadata.uid
+        if m_type not in self._type_table:
+            self._type_table[m_type] = {
+                    'name': {},
+                    'uid': {}
+                    }
+        # Check that type/UID pair is unique (if we have a UID)
+        if m_uid:
+            if m_uid in self._type_table[m_type]['uid']:
+                raise InconsistentMetadataError(
+                        f'Metadata with type={m_type}, UID={m_uid}' +
+                        ' does not have a unique type/UID pair!')
+            self._type_table[m_type]['uid'][m_uid] = new_index
+
+        # Add to the name lookup table (if we have a name)
+        if m_name:
+            if m_name not in self._type_table[m_type]['name']:
+                self._type_table[m_type]['name'][m_name] = []
+            self._type_table[m_type]['name'][m_name].append(new_index)
+
+        # Add to the filename lookup table
+        self._filename_table[filename] = new_index
+
+    def lookup_filename(self, filename):
+        """
+        Looks up a piece of metadata by filename.
+
+        Args:
+        -----
+        filename: A Path specifying the piece of metadata to load.
+            The filename is specified relative to the root.
+
+        Returns:
+        --------
+        A metadata object referenced from that file location.
+
+        Raises:
+        -------
+        A LookupError if the specified file does not exist.
+        """
+        # Check that the file exists
+        if not (self.root_filename / filename.is_file()):
+            raise LookupError('Specified metadata file does not exist!')
+        # Because it is safe to call add_metadata on a previously
+        # added piece of metadata, utilize this idempotenece!
+        self.add_metadata(filename)
+        return self._cache[self._filename_table[filename]]
+
+
 def find_root_yaml(path=None):
     """
     Starting from a given path or the current working directory,
@@ -144,6 +261,6 @@ def find_root_yaml(path=None):
             # otherwise, continue searching
             current_dir = up_dir
         return os.path.join(current_dir, 'tame.yaml')
-    except PermissionError as e:
-        print(e)
+    except PermissionError as error:
+        print(error)
         raise UntrackedRepositoryError("No root 'tame.yaml' found due to permission denied error")
