@@ -38,10 +38,6 @@ jobs:
       run: |
           pip install python-coveralls pytest-cov
           pytest --cov=tame
-  finish_coveralls:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
     - name: Finish coveralls
       run: |
           coveralls
