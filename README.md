@@ -1,6 +1,11 @@
 # tame
 An unobtrusive YAML based metadata system for arbitrary data management.
 
+Stable branch code coverage:
+[![codecov](https://codecov.io/gh/meson800/tame/branch/develop/graph/badge.svg)](https://codecov.io/gh/meson800/tame)
+Develop code coverage:
+[![codecov](https://codecov.io/gh/meson800/tame/branch/master/graph/badge.svg)](https://codecov.io/gh/meson800/tame)
+
 ## Rationale
 In many fields, large amounts of interlinked data are generated. Contextual information, such as the experimental layout of the plate used for microscopy or the configuration of a system used to generate a large profile file, is sometimes stored in the relevant file formats. However, the more common case is that this contextual information must be encoded elsewhere.
 
