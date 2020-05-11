@@ -35,3 +35,22 @@ jobs:
       run: |
           pip install pytest
           pytest
+    - name: Run test suite, with coverage
+      run: |
+          pip install pytest-cov
+          pytest --cov=tame
+    - name: Coveralls Parallel
+      uses: coverallsapp/github-action@master
+      with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ matrix.python-version }}
+          parallel: true
+finish_coveralls:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+        name: Finish coveralls
+        uses: coverallsapp/github-action@master
+        with:
+            github-token: ${{ secrets.github_token }}
+            parallel-finished: true
