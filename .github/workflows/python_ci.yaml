@@ -11,7 +11,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -45,7 +44,7 @@ jobs:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ matrix.python-version }}
           parallel: true
-finish_coveralls:
+  finish_coveralls:
     needs: build
     runs-on: ubuntu-latest
     steps:
