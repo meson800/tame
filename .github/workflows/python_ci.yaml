@@ -48,8 +48,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-        name: Finish coveralls
-        uses: coverallsapp/github-action@master
-        with:
-            github-token: ${{ secrets.github_token }}
-            parallel-finished: true
+    - name: Finish coveralls
+      uses: coverallsapp/github-action@master
+      with:
+          github-token: ${{ secrets.github_token }}
+          parallel-finished: true
