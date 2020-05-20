@@ -117,6 +117,31 @@ class Metadata:
         # Set remaining user metadata
         self.data = yaml_dict
 
+class MetadataTree:
+    """
+    Class that stores a mirrored version of the
+    metadata directory, loaded on demand. This tree
+    stores both metadata objects, if present at a file
+    location, along with storing last updated timestamps
+    """
+    def __init__(self, node_path_element, last_update_timestamp):
+        """
+        Initalizes the internal details of the tree.
+
+        Args:
+        -----
+        node_path_element: The part of the filename
+            recognized by this part of the tree. Joining
+            all of the parts of the path with pathlib would
+            give the path relative to the root.
+        last_update_timestamp: The timestamp for the last time
+            the file or directory was updated.
+        """
+        self.path_element = node_path_element
+        self.children = {}
+        self.timestamp = last_update_timestamp
+        self.metadata_index = None
+
 class MetadataCache:
     """
     Class that represents a cache of metadata objects. This class
@@ -131,8 +156,8 @@ class MetadataCache:
     stored indexed in a list. Lookups are facilitated
     primarily by a type dictionary, which contains subdictionaries:
     a name dictionary (storing _lists_ of metadata objects) and a UID
-    dictionary (must store single indicies). There is a separate filename
-    dictionary.
+    dictionary (must store single indicies).
+    Filesystem paths are handled in a tree structure.
     """
     def __init__(self, root):
         """
@@ -144,13 +169,20 @@ class MetadataCache:
         root: A path-like object encoding the filename of the root.yaml file
         """
         self.root_filename = Path(root)
-        self.root_dir = Path(root).parent
+        self.root_dir = Path(root).parent.resolve()
         with open(str(self.root_filename)) as f:
             self.root_settings = yaml.safe_load(f.read())
 
         self._cache = []
-        self._filename_table = {}
+        self._filename_tree = MetadataTree(self.root_dir,
+                                           self.root_dir.stat().st_mtime)
+
         self._type_table = {}
+
+    def lookup(self, relative_filename=None, locator=None):
+        """
+        Attempts to look up a
+        """
 
     def add_metadata(self, filename):
         """
@@ -166,8 +198,20 @@ class MetadataCache:
             file to load, specified relative to the directory including
             the root.
         """
+        # Add to the filename tree
+        tree_entry = self._filename_tree
+        cur_path = self.root_dir
+
+        filename = (self.root_dir / filename).resolve()
+        for part in filename.relative_to(self.root_dir).parts:
+            cur_path = cur_path / Path(part)
+            if part not in tree_entry.children:
+                tree_entry.children[part] = MetadataTree(cur_path,
+                                                 cur_path.stat().st_mtime)
+            tree_entry = tree_entry.children[part]
+
         # Skip if we've already loaded this piece of metdata.
-        if filename in self._filename_table:
+        if tree_entry.metadata_index is not None:
             return
 
         # Otherwise, attempt to load it
@@ -200,8 +244,8 @@ class MetadataCache:
                 self._type_table[m_type]['name'][m_name] = []
             self._type_table[m_type]['name'][m_name].append(new_index)
 
-        # Add to the filename lookup table
-        self._filename_table[filename] = new_index
+        # tree_entry is now the final node in the tree
+        tree_entry.metadata_index = new_index
 
     def lookup_filename(self, filename):
         """
@@ -221,12 +265,16 @@ class MetadataCache:
         A LookupError if the specified file does not exist.
         """
         # Check that the file exists
-        if not (self.root_filename / filename.is_file()):
+        if not (self.root_dir / filename.is_file()):
             raise LookupError('Specified metadata file does not exist!')
         # Because it is safe to call add_metadata on a previously
         # added piece of metadata, utilize this idempotenece!
         self.add_metadata(filename)
-        return self._cache[self._filename_table[filename]]
+        # Lookup using the tree
+        tree_entry = self._filename_tree
+        for part in filename.resolve().relative_to(self.root_dir).parts:
+            tree_entry = tree_entry[part]
+        return self._cache[tree_entry.metadata_index]
 
 
 def find_root_yaml(path=None):
