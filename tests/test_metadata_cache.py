@@ -113,3 +113,32 @@ def test_name_noncollision(tmpdir):
     cache.add_metadata(Path('test2.yaml'))
     cache.add_metadata(Path('test3.yaml'))
 
+def test_cache_tree(tmpdir):
+    """
+    Ensures that files in nested folders are properly
+    added to the cache
+    """
+    tmpdir, cache = init_cache(tmpdir)
+
+    (tmpdir / 'test' / 'test1').mkdir(parents=True)
+    (tmpdir / 'test' / 'test2').mkdir(parents=True)
+
+    with open(str(tmpdir / 'test' / 'foo1.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        """)
+    with open(str(tmpdir / 'test' / 'test1' / 'foo2.yaml'), 'w') as f:
+        f.write("""
+        type: bar
+        name: baz
+        """)
+    with open(str(tmpdir / 'test' / 'test2' / 'foo3.yaml'), 'w') as f:
+        f.write("""
+        type: baz
+        name: foo
+        """)
+    cache.add_metadata(Path('test') / 'foo1.yaml')
+    cache.add_metadata(Path('test') / 'test1' / 'foo2.yaml')
+    cache.add_metadata(Path('test') / 'test2' / 'foo3.yaml')
+
