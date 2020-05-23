@@ -142,3 +142,32 @@ def test_cache_tree(tmpdir):
     cache.add_metadata(Path('test') / 'test1' / 'foo2.yaml')
     cache.add_metadata(Path('test') / 'test2' / 'foo3.yaml')
 
+def test_cache_intial_load(tmpdir):
+    """
+    Ensures that YAML files that already exist in directories
+    and subdirectories are loaded in the initial metadata walk,
+    such that we can lookup entries with locators.
+    """
+    t = Path(tmpdir.strpath)
+    (t / 'test' / 'test1').mkdir(parents=True)
+    with open(str(t / 'toplevel.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        """)
+
+    with open(str(t / 'test' / 'level1.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        uid: baz
+        """)
+    with open(str(t / 'test' / 'test1' / 'inner.yaml'), 'w') as f:
+        f.write("""
+        type: foobar
+        name: bar
+        uid: testing
+        """)
+    tmpdir, cache = init_cache(tmpdir)
+    cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
+    cache.lookup_by_keyval({'type': 'foo', 'uid': 'baz'})
+    cache.lookup_by_keyval({'type': 'foobar', 'uid': 'testing'})

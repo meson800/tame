@@ -162,7 +162,8 @@ class MetadataCache:
     def __init__(self, root):
         """
         Given a path to the root file, constructs the internal
-        structures needed for the cache.
+        structures needed for the cache, and walks down from the root
+        directory, storing located metadata files.
 
         Args:
         -----
@@ -176,13 +177,18 @@ class MetadataCache:
         self._cache = []
         self._filename_tree = MetadataTree(self.root_dir,
                                            self.root_dir.stat().st_mtime)
-
         self._type_table = {}
 
-    def lookup(self, relative_filename=None, locator=None):
-        """
-        Attempts to look up a
-        """
+        # Initiate a filesystem scan
+        for root, dirs, files in walk(str(self.root_dir)):
+            # Don't reload the root yaml file
+            if Path(root) == self.root_dir:
+                files.remove('root.yaml')
+            # Add any metadata files we find
+            for filename in files:
+                rel_filename = (Path(root) / Path(filename)).relative_to(self.root_dir)
+                if rel_filename.suffixes[0] == '.yaml':
+                    self.add_metadata(rel_filename)
 
     def add_metadata(self, filename):
         """
@@ -247,7 +253,48 @@ class MetadataCache:
         # tree_entry is now the final node in the tree
         tree_entry.metadata_index = new_index
 
-    def lookup_filename(self, filename):
+    def lookup_by_keyval(self, locator):
+        """
+        Attempts to look up a metadata object by locator information.
+        This information is based either on a type/name pair or a 
+        type/uid pair. Extra information passed as part of the
+        locator can be identified based on user-defined functions.
+
+        Args:
+        -----
+        locator: A dictionary containing a 'type' key, as well as
+            either a 'name' or 'uid' key. Extra key-value pairs
+            will be identified based on user-defined functions.
+
+        Returns:
+        --------
+        A metadata object referenced by the locator.
+
+        Raises:
+        -------
+        A LookupError if the specified metadata does not exist.
+        A RuntimeError if the locator does not include the correct
+            keys.
+        """
+        # Do an initial check to make sure the locator is sane
+        if 'type' not in locator and (
+                'name' not in locator or
+                'uid' not in locator):
+            raise RuntimeError('Locator does not contain required keys!')
+        if locator['type'] in self._type_table:
+            lookup = self._type_table[locator['type']]
+            if 'uid' in locator and locator['uid'] in lookup['uid']:
+                return self._cache[lookup['uid'][locator['uid']]]
+            if 'name' in locator and locator['name'] in lookup['name']:
+                matches = lookup['name'][locator['name']]
+                if len(matches) > 1:
+                    # Not a unique lookup
+                    raise LookupError('Multiple metadata objects exist ' +
+                            'with type={}, name={}'.format(
+                                locator['type'], locator['name']))
+                return matches[0]
+
+    def lookup_by_filename(self, filename):
         """
         Looks up a piece of metadata by filename.
 
