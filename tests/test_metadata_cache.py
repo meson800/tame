@@ -171,3 +171,46 @@ def test_cache_intial_load(tmpdir):
     cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
     cache.lookup_by_keyval({'type': 'foo', 'uid': 'baz'})
     cache.lookup_by_keyval({'type': 'foobar', 'uid': 'testing'})
+
+def test_nonexistant_keyval(tmpdir):
+    """
+    Ensures that a lookup against a nonexistant locator pair
+    raises a proper LookupError
+    """
+    tmpdir, cache = init_cache(tmpdir)
+    with pytest.raises(tame.core.LookupError):
+        cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
+
+def test_keyval_name_collision(tmpdir):
+    """
+    Ensures that naming collisions involving non-unique type/name
+    pairs is caught.
+    """
+    tmpdir, cache = init_cache(tmpdir)
+    with open(str(tmpdir / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        uid: uid1
+        """)
+    with open(str(tmpdir / 'meta2.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        uid: uid2
+        """)
+    with open(str(tmpdir / 'meta3.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: baz
+        uid: uid3
+        """)
+    
+    for i in range(1, 4):
+        cache.add_metadata(Path('meta{}.yaml'.format(i)))
+
+    cache.lookup_by_keyval({'type': 'foo', 'uid': 'uid1'})
+    cache.lookup_by_keyval({'type': 'foo', 'name': 'baz'})
+
+    with pytest.raises(tame.core.LookupError):
+        cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})

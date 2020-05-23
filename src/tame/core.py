@@ -293,6 +293,7 @@ class MetadataCache:
                             'with type={}, name={}'.format(
                                 locator['type'], locator['name']))
                 return matches[0]
+        raise LookupError('No metadata object found with given locator')
 
     def lookup_by_filename(self, filename):
         """
