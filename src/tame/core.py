@@ -8,10 +8,7 @@ import os
 from pathlib import Path
 import yaml
 
-try:
-    from os import scandir, walk
-except ImportError:
-    from scandir import scandir, walk
+from os import scandir, walk
 
 
 class UntrackedRepositoryError(RuntimeError):
@@ -313,15 +310,15 @@ class MetadataCache:
         A LookupError if the specified file does not exist.
         """
         # Check that the file exists
-        if not (self.root_dir / filename.is_file()):
+        if not (self.root_dir / filename).is_file():
             raise LookupError('Specified metadata file does not exist!')
         # Because it is safe to call add_metadata on a previously
         # added piece of metadata, utilize this idempotenece!
         self.add_metadata(filename)
         # Lookup using the tree
         tree_entry = self._filename_tree
-        for part in filename.resolve().relative_to(self.root_dir).parts:
-            tree_entry = tree_entry[part]
+        for part in filename.parts:
+            tree_entry = tree_entry.children[part]
         return self._cache[tree_entry.metadata_index]
 
 

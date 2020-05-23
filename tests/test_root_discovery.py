@@ -12,6 +12,17 @@ def test_simple_find_root(tmpdir):
     # Does not throw exception on success
     print(tame.core.find_root_yaml(tmpdir.strpath))
 
+def test_cwd_find_root(tmpdir):
+    """
+    Tests if a simple flat hierarchy tame.yaml is found through
+    the current working directory.
+    """
+    touch(os.path.join(tmpdir.strpath, 'tame.yaml'))
+    os.chdir(tmpdir.strpath)
+    # Does not throw exception on success
+    print(tame.core.find_root_yaml())
+
+
 def test_root_not_found(tmpdir):
     """
     Makes sure that a UntrackedRepositoryError is raised

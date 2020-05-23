@@ -172,6 +172,71 @@ def test_cache_intial_load(tmpdir):
     cache.lookup_by_keyval({'type': 'foo', 'uid': 'baz'})
     cache.lookup_by_keyval({'type': 'foobar', 'uid': 'testing'})
 
+def test_cache_lookup_by_filename(tmpdir):
+    """
+    Ensures that metadata files can be loaded by filename
+    """
+    tmpdir, cache = init_cache(tmpdir)
+    (tmpdir / 'test').mkdir()
+    with open(str(tmpdir / 'base.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        """)
+    with open(str(tmpdir / 'test' / 'lower.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: baz
+        """)
+    cache.lookup_by_filename(Path('base.yaml'))
+    cache.lookup_by_filename(Path('test') / 'lower.yaml')
+
+def test_cache_nonexistant_filename_error(tmpdir):
+    """
+    Ensures that attempts to load metadata from files
+    that do not exist fail.
+    """
+    tmpdir, cache = init_cache(tmpdir)
+    with pytest.raises(tame.core.LookupError):
+        cache.lookup_by_filename(Path('base.yaml'))
+
+def test_cache_add_idempotent(tmpdir):
+    """
+    Ensures that the add_metdata function is idempotent,
+    both when metadata is loaded as part of an initial sweep
+    and later on.
+    """
+    t = Path(tmpdir.strpath)
+    (t / 'test' / 'test1').mkdir(parents=True)
+    with open(str(t / 'toplevel.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        name: bar
+        """)
+
+    tmpdir, cache = init_cache(tmpdir)
+
+    with open(str(t / 'test' / 'level1.yaml'), 'w') as f:
+        f.write("""
+        type: foo
+        uid: baz
+        """)
+    cache.add_metadata(Path('toplevel.yaml'))
+    cache.add_metadata(Path('test') / Path('level1.yaml'))
+    cache.add_metadata(Path('test') / Path('level1.yaml'))
+
+def test_invalid_locator(tmpdir):
+    """
+    Ensures that a keyval lookup without a valid identifier fails.
+    """
+    tmpdir, cache = init_cache(tmpdir)
+    with pytest.raises(RuntimeError):
+        cache.lookup_by_keyval({'type': 'foo'})
+    with pytest.raises(RuntimeError):
+        cache.lookup_by_keyval({'name': 'foo'})
+    with pytest.raises(RuntimeError):
+        cache.lookup_by_keyval({'uid': 'foo'})
+
 def test_nonexistant_keyval(tmpdir):
     """
     Ensures that a lookup against a nonexistant locator pair

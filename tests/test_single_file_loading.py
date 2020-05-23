@@ -6,6 +6,14 @@ import tame.core
 
 from test_helpers import touch
 
+def test_metadata_arg_failure():
+    """
+    Ensures that if we pass neither a filename or a
+    metadata object, we raise the proper exception
+    """
+    with pytest.raises(RuntimeError):
+        meta = tame.core.Metadata()
+
 def test_barebones_file(tmpdir):
     """
     Ensures that we can load a metadata
@@ -58,6 +66,32 @@ def test_special_keyvalues():
     assert meta.uid == 'bar'
     assert meta.files == ['test_file.yaml']
     assert meta.parent == {'foobar'}
+
+def test_name_required_as_string():
+    """
+    Ensures that the 'name' key is passed as a string.
+    """
+    yaml = """
+    type: test
+    name:
+      - foo
+      - bar
+    """
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
+
+def test_uid_required_as_string():
+    """
+    Ensures that the 'uid' key is passed as a string.
+    """
+    yaml = """
+    type: test
+    uid:
+      - foo
+      - bar
+    """
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
 
 def test_files_required_as_list():
     """
