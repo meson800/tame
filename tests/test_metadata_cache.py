@@ -398,4 +398,19 @@ def test_invalid_parent(tmpdir):
     cache.validate_parents('subdir')
     cache.validate_parents('subdir/')
 
+def test_empty_parent_check(tmpdir):
+    """
+    Tests that validate_parents calls on a path not loaded
+    in the tree simply returns.
+    """
+    t = Path(tmpdir.strpath)
+    (t / 'subdir').mkdir()
+    with open(str(t / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p001
+        """)
+    tmpdir, cache = init_cache(tmpdir)
+    cache.validate_parents('subdir/nonexistent.yaml')
+
 
