@@ -4,11 +4,10 @@ Includes key shared functions used by other internal Tame modules.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import os
 from pathlib import Path
+import os
 import yaml
 
-from os import scandir, walk
 
 
 class UntrackedRepositoryError(RuntimeError):
@@ -29,13 +28,13 @@ class InconsistentMetadataError(RuntimeError):
     rules.
     """
 
-class LookupError(RuntimeError):
+class MetadataLookupError(RuntimeError):
     """
     Runtime error thrown when a lookup for a piece
     of metadata fails, often through a missing parent
     """
 
-class Metadata:
+class Metadata: # pylint: disable=too-few-public-methods
     """
     Class that represents a piece of metadata (e.g. a single YAML document).
     The only required key in a piece of metadata is its `type`, a string
@@ -84,6 +83,11 @@ class Metadata:
         del yaml_dict['type']
         self.name = ''
         self.uid = ''
+
+        if filename is None:
+            filename = 'INLINE_YAML'
+        self.filename = filename
+
         self.parent = {}
         self.files = []
         # Replace them as needed
@@ -114,7 +118,7 @@ class Metadata:
         # Set remaining user metadata
         self.data = yaml_dict
 
-class MetadataTree:
+class MetadataTree: # pylint: disable=too-few-public-methods
     """
     Class that stores a mirrored version of the
     metadata directory, loaded on demand. This tree
@@ -168,8 +172,8 @@ class MetadataCache:
         """
         self.root_filename = Path(root)
         self.root_dir = Path(root).parent.resolve()
-        with open(str(self.root_filename)) as f:
-            self.root_settings = yaml.safe_load(f.read())
+        with open(str(self.root_filename)) as yaml_file:
+            self.root_settings = yaml.safe_load(yaml_file.read())
 
         self._cache = []
         self._filename_tree = MetadataTree(self.root_dir,
@@ -177,13 +181,14 @@ class MetadataCache:
         self._type_table = {}
 
         # Initiate a filesystem scan
-        for root, dirs, files in walk(str(self.root_dir)):
+        for scan_root, _, files in os.walk(str(self.root_dir)):
             # Don't reload the root yaml file
-            if Path(root) == self.root_dir:
+            if Path(scan_root) == self.root_dir:
                 files.remove('root.yaml')
             # Add any metadata files we find
             for filename in files:
-                rel_filename = (Path(root) / Path(filename)).relative_to(self.root_dir)
+                rel_filename = (Path(scan_root) /
+                                Path(filename)).relative_to(self.root_dir)
                 if rel_filename.suffixes[0] == '.yaml':
                     self.add_metadata(rel_filename)
 
@@ -210,7 +215,7 @@ class MetadataCache:
             cur_path = cur_path / Path(part)
             if part not in tree_entry.children:
                 tree_entry.children[part] = MetadataTree(cur_path,
-                                                 cur_path.stat().st_mtime)
+                                                         cur_path.stat().st_mtime)
             tree_entry = tree_entry.children[part]
 
         # Skip if we've already loaded this piece of metdata.
@@ -219,7 +224,6 @@ class MetadataCache:
 
         # Otherwise, attempt to load it
         new_metadata = Metadata(filename=self.root_dir / filename)
-        new_metadata.filename = filename
 
         new_index = len(self._cache)
         self._cache.append(new_metadata)
@@ -230,16 +234,15 @@ class MetadataCache:
         m_uid = new_metadata.uid
         if m_type not in self._type_table:
             self._type_table[m_type] = {
-                    'name': {},
-                    'uid': {}
-                    }
+                'name': {},
+                'uid': {}}
         # Check that type/UID pair is unique (if we have a UID)
         if m_uid:
             if m_uid in self._type_table[m_type]['uid']:
                 raise InconsistentMetadataError(
-                        ('Metadata with type={}, UID={}' +
-                        ' does not have a unique type/UID pair!').format(
-                        m_type, m_uid))
+                    ('Metadata with type={}, UID={}' +
+                     ' does not have a unique type/UID pair!').format(
+                         m_type, m_uid))
             self._type_table[m_type]['uid'][m_uid] = new_index
 
         # Add to the name lookup table (if we have a name)
@@ -254,7 +257,7 @@ class MetadataCache:
     def _lookup_by_keyval(self, locator):
         """
         Attempts to lookup a metadata object by locator information.
-        This information is based either on a type/name pair or a 
+        This information is based either on a type/name pair or a
         type/uid pair. Extra information passed as part of a locator
         can be identified based on user-defined functions.
 
@@ -270,7 +273,7 @@ class MetadataCache:
 
         Raises:
         -------
-        A LookupError if the specified metadata does not exist.
+        A MetadataLookupError if the specified metadata does not exist.
         A RuntimeError if the locator does not include the correct
             keys.
         """
@@ -287,16 +290,17 @@ class MetadataCache:
                 matches = lookup['name'][locator['name']]
                 if len(matches) > 1:
                     # Not a unique lookup
-                    raise LookupError('Multiple metadata objects exist ' +
-                            'with type={}, name={}'.format(
-                                locator['type'], locator['name']))
+                    error_str = ('Multiple metadata objects exist ' +
+                                 'with type={}, name={}').format(
+                                     locator['type'], locator['name'])
+                    raise MetadataLookupError(error_str)
                 return matches[0]
-        raise LookupError('No metadata object found with given locator')
+        raise MetadataLookupError('No metadata object found with given locator')
 
     def lookup_by_keyval(self, locator):
         """
         Attempts to look up a metadata object by locator information.
-        This information is based either on a type/name pair or a 
+        This information is based either on a type/name pair or a
         type/uid pair. Extra information passed as part of the
         locator can be identified based on user-defined functions.
 
@@ -312,7 +316,7 @@ class MetadataCache:
 
         Raises:
         -------
-        A LookupError if the specified metadata does not exist.
+        A MetadataLookupError if the specified metadata does not exist.
         A RuntimeError if the locator does not include the correct
             keys.
         """
@@ -334,11 +338,11 @@ class MetadataCache:
 
         Raises:
         -------
-        A LookupError if the specified file does not exist.
+        A MetadataLookupError if the specified file does not exist.
         """
         # Check that the file exists
         if not (self.root_dir / filename).is_file():
-            raise LookupError('Specified metadata file does not exist!')
+            raise MetadataLookupError('Specified metadata file does not exist!')
         # Because it is safe to call add_metadata on a previously
         # added piece of metadata, utilize this idempotenece!
         self.add_metadata(filename)
@@ -348,7 +352,6 @@ class MetadataCache:
             tree_entry = tree_entry.children[part]
         return tree_entry.metadata_index
 
-        
     def lookup_by_filename(self, filename):
         """
         Looks up a piece of metadata by filename.
@@ -364,7 +367,7 @@ class MetadataCache:
 
         Raises:
         -------
-        A LookupError if the specified file does not exist.
+        A MetadataLookupError if the specified file does not exist.
         """
         return self._cache[self._lookup_by_filename(filename)]
 
@@ -379,7 +382,7 @@ class MetadataCache:
 
         When passed a directory, parent information is
         validated for all metadata files under that directory.
-        
+
         When passed a single file, parent information is
         only validated for that single file.
 
@@ -391,7 +394,7 @@ class MetadataCache:
 
         Raises:
         -------
-        LookupError: if a parent relationship
+        MetadataLookupError: if a parent relationship
             is invalid (e.g. cannot be located)
         """
         validated = [False] * len(self._cache)

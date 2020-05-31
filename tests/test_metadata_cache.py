@@ -197,7 +197,7 @@ def test_cache_nonexistant_filename_error(tmpdir):
     that do not exist fail.
     """
     tmpdir, cache = init_cache(tmpdir)
-    with pytest.raises(tame.core.LookupError):
+    with pytest.raises(tame.core.MetadataLookupError):
         cache.lookup_by_filename(Path('base.yaml'))
 
 def test_cache_add_idempotent(tmpdir):
@@ -240,10 +240,10 @@ def test_invalid_locator(tmpdir):
 def test_nonexistant_keyval(tmpdir):
     """
     Ensures that a lookup against a nonexistant locator pair
-    raises a proper LookupError
+    raises a proper MetadataLookupError
     """
     tmpdir, cache = init_cache(tmpdir)
-    with pytest.raises(tame.core.LookupError):
+    with pytest.raises(tame.core.MetadataLookupError):
         cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
 
 def test_keyval_name_collision(tmpdir):
@@ -277,7 +277,7 @@ def test_keyval_name_collision(tmpdir):
     cache.lookup_by_keyval({'type': 'foo', 'uid': 'uid1'})
     cache.lookup_by_keyval({'type': 'foo', 'name': 'baz'})
 
-    with pytest.raises(tame.core.LookupError):
+    with pytest.raises(tame.core.MetadataLookupError):
         cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
 
 def test_parent_validation(tmpdir):
@@ -387,9 +387,9 @@ def test_invalid_parent(tmpdir):
         """)
 
     tmpdir, cache = init_cache(tmpdir)
-    with pytest.raises(tame.core.LookupError):
+    with pytest.raises(tame.core.MetadataLookupError):
         cache.validate_parents()
-    with pytest.raises(tame.core.LookupError):
+    with pytest.raises(tame.core.MetadataLookupError):
         cache.validate_parents(Path('bad1.yaml'))
     print('Done with lookup errors')
     cache.validate_parents(Path('subdir'))
