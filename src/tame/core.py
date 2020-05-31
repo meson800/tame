@@ -371,11 +371,12 @@ class MetadataCache:
         """
         return self._cache[self._lookup_by_filename(filename)]
 
-    def validate_parents(self, tree_location=None):
+    def validate_chain(self, tree_location=None, verify_files=True):
         """
         Verifies that all parent relationships for
         metadata loaded under the given tree location
-        are valid.
+        are valid, and that all referenced files are
+        in place.
 
         When a tree location is not given,
         the entire tree under the root is validated.
@@ -391,11 +392,15 @@ class MetadataCache:
         -----
         tree_location: A path-like object of the search location,
             specified relative to the root directory.
+        verify_files: (Optional). If false, skips the file existence
+            check.
 
         Raises:
         -------
         MetadataLookupError: if a parent relationship
             is invalid (e.g. cannot be located)
+        InconsistentMetadataError: If a tracked file does not
+            exist.
         """
         validated = [False] * len(self._cache)
 
@@ -425,6 +430,9 @@ class MetadataCache:
                 del meta_queue[0]
                 continue
             metadata = self._cache[meta_queue[0]]
+            if verify_files:
+                self.verify_files(metadata)
+
             for parent in metadata.parent:
                 if isinstance(parent, str):
                     # Load by filename
@@ -438,6 +446,37 @@ class MetadataCache:
             validated[meta_queue[0]] = True
             del meta_queue[0]
 
+    def verify_files(self, metadata):
+        """
+        Given a piece of tracked Metadata, checks that all
+        referenced files exist. To start, this checks if
+        every string given is a file that exists relative
+        to the directory that the metadata file is in.
+
+        If this fails, this attempts to check if, using glob
+        matching, there is at least one file found.
+
+        Args:
+        -----
+        metadata: A Metadata object represent the object to check.
+
+        Raises:
+        -------
+        InconsistentMetadataError: If a referenced file does not exist.
+        """
+
+        our_dir = metadata.filename.parent
+        for filename in metadata.files:
+            try:
+                if (our_dir / filename).exists():
+                    continue
+            except OSError:
+                pass # Could be invalid glob
+            if len(list(our_dir.glob(filename))) > 0:
+                continue
+            error = ('For metdata object {}, specified tracked file {}' +
+                     'does not exist.').format(str(metadata.filename), filename)
+            raise InconsistentMetadataError(error)
 
 def find_root_yaml(path=None):
     """

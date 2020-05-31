@@ -309,7 +309,7 @@ def test_parent_validation(tmpdir):
         """)
 
     tmpdir, cache = init_cache(tmpdir)
-    cache.validate_parents()
+    cache.validate_chain()
 
 def test_parent_loop(tmpdir):
     """
@@ -345,10 +345,10 @@ def test_parent_loop(tmpdir):
           - {type: plasmid, name: p003}
         """)
     tmpdir, cache = init_cache(tmpdir)
-    cache.validate_parents()
+    cache.validate_chain()
     # Validate single files as well
-    cache.validate_parents(Path('meta1.yaml'))
-    cache.validate_parents(Path('meta3.yaml'))
+    cache.validate_chain(Path('meta1.yaml'))
+    cache.validate_chain(Path('meta3.yaml'))
 
 def test_invalid_parent(tmpdir):
     """
@@ -388,19 +388,19 @@ def test_invalid_parent(tmpdir):
 
     tmpdir, cache = init_cache(tmpdir)
     with pytest.raises(tame.core.MetadataLookupError):
-        cache.validate_parents()
+        cache.validate_chain()
     with pytest.raises(tame.core.MetadataLookupError):
-        cache.validate_parents(Path('bad1.yaml'))
+        cache.validate_chain(Path('bad1.yaml'))
     print('Done with lookup errors')
-    cache.validate_parents(Path('subdir'))
-    cache.validate_parents(Path('subdir/'))
+    cache.validate_chain(Path('subdir'))
+    cache.validate_chain(Path('subdir/'))
     # Test string to path conversion
-    cache.validate_parents('subdir')
-    cache.validate_parents('subdir/')
+    cache.validate_chain('subdir')
+    cache.validate_chain('subdir/')
 
 def test_empty_parent_check(tmpdir):
     """
-    Tests that validate_parents calls on a path not loaded
+    Tests that validate_chain calls on a path not loaded
     in the tree simply returns.
     """
     t = Path(tmpdir.strpath)
@@ -411,6 +411,4 @@ def test_empty_parent_check(tmpdir):
         name: p001
         """)
     tmpdir, cache = init_cache(tmpdir)
-    cache.validate_parents('subdir/nonexistent.yaml')
-
-
+    cache.validate_chain('subdir/nonexistent.yaml')
