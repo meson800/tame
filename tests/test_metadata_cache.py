@@ -284,7 +284,7 @@ def test_parent_validation(tmpdir):
     """
     Tests that basic references to parents operate correctly.
     """
-    t = Path(tmpdir)
+    t = Path(tmpdir.strpath)
     with open(str(t / 'meta1.yaml'), 'w') as f:
         f.write("""
         type: plasmid
@@ -315,7 +315,7 @@ def test_parent_loop(tmpdir):
     """
     Tests that a recursive parent loop is still handled.
     """
-    t = Path(tmpdir)
+    t = Path(tmpdir.strpath)
     with open(str(t / 'meta1.yaml'), 'w') as f:
         f.write("""
         type: plasmid
@@ -355,7 +355,7 @@ def test_invalid_parent(tmpdir):
     Tests that invalid parents raise errors, but
     only if that path is validated
     """
-    t = Path(tmpdir)
+    t = Path(tmpdir.strpath)
     with open(str(t / 'bad1.yaml'), 'w') as f:
         f.write("""
         type: plasmid
