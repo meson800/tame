@@ -65,7 +65,7 @@ def test_special_keyvalues():
     assert meta.name == 'foo'
     assert meta.uid == 'bar'
     assert meta.files == ['test_file.yaml']
-    assert meta.parent == {'foobar'}
+    assert meta.parent == ['foobar']
 
 def test_name_required_as_string():
     """

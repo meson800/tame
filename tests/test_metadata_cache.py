@@ -279,3 +279,123 @@ def test_keyval_name_collision(tmpdir):
 
     with pytest.raises(tame.core.LookupError):
         cache.lookup_by_keyval({'type': 'foo', 'name': 'bar'})
+
+def test_parent_validation(tmpdir):
+    """
+    Tests that basic references to parents operate correctly.
+    """
+    t = Path(tmpdir)
+    with open(str(t / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p001
+        parent:
+          - 'meta2.yaml'
+        """)
+    with open(str(t / 'meta2.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        uid: p002
+        parent:
+          - {type: plasmid, uid: p003}
+        """)
+    
+    (t / 'lower').mkdir()
+    with open(str(t / 'lower' / 'meta3.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        uid: p003
+        name: testing
+        """)
+
+    tmpdir, cache = init_cache(tmpdir)
+    cache.validate_parents()
+
+def test_parent_loop(tmpdir):
+    """
+    Tests that a recursive parent loop is still handled.
+    """
+    t = Path(tmpdir)
+    with open(str(t / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p001
+        parent:
+          - meta2.yaml
+        """)
+    with open(str(t / 'meta2.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p002
+        parent:
+          - meta1.yaml
+        """)
+    with open(str(t / 'meta3.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p003
+        parent:
+          - {type: plasmid, name: p004}
+        """)
+    with open(str(t / 'meta4.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p004
+        parent:
+          - {type: plasmid, name: p003}
+        """)
+    tmpdir, cache = init_cache(tmpdir)
+    cache.validate_parents()
+    # Validate single files as well
+    cache.validate_parents(Path('meta1.yaml'))
+    cache.validate_parents(Path('meta3.yaml'))
+
+def test_invalid_parent(tmpdir):
+    """
+    Tests that invalid parents raise errors, but
+    only if that path is validated
+    """
+    t = Path(tmpdir)
+    with open(str(t / 'bad1.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p001
+        parent:
+          - badNaN.yaml
+        """)
+    with open(str(t / 'bad2.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p002
+        parent:
+          - {type: plasmid, name: pBAD}
+        """)
+    (t / 'subdir').mkdir()
+    with open(str(t / 'subdir' / 'good1.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p003
+        parent:
+          - good2.yaml
+        """)
+    with open(str(t / 'subdir' / 'good2.yaml'), 'w') as f:
+        f.write("""
+        type: plasmid
+        name: p004
+        parent:
+          - {type: plasmid, name: p003}
+        """)
+
+    tmpdir, cache = init_cache(tmpdir)
+    with pytest.raises(tame.core.LookupError):
+        cache.validate_parents()
+    with pytest.raises(tame.core.LookupError):
+        cache.validate_parents(Path('bad1.yaml'))
+    print('Done with lookup errors')
+    cache.validate_parents(Path('subdir'))
+    cache.validate_parents(Path('subdir/'))
+    # Test string to path conversion
+    cache.validate_parents('subdir')
+    cache.validate_parents('subdir/')
+
+

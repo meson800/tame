@@ -103,7 +103,7 @@ class Metadata:
             if not isinstance(yaml_dict['parent'], list):
                 raise InconsistentMetadataError(
                     'parent key is special: value must be provided as a list')
-            self.parent = set(yaml_dict['parent'])
+            self.parent = yaml_dict['parent']
             del yaml_dict['parent']
         if 'files' in yaml_dict:
             if not isinstance(yaml_dict['files'], list):
@@ -219,6 +219,7 @@ class MetadataCache:
 
         # Otherwise, attempt to load it
         new_metadata = Metadata(filename=self.root_dir / filename)
+        new_metadata.filename = filename
 
         new_index = len(self._cache)
         self._cache.append(new_metadata)
@@ -250,12 +251,12 @@ class MetadataCache:
         # tree_entry is now the final node in the tree
         tree_entry.metadata_index = new_index
 
-    def lookup_by_keyval(self, locator):
+    def _lookup_by_keyval(self, locator):
         """
-        Attempts to look up a metadata object by locator information.
+        Attempts to lookup a metadata object by locator information.
         This information is based either on a type/name pair or a 
-        type/uid pair. Extra information passed as part of the
-        locator can be identified based on user-defined functions.
+        type/uid pair. Extra information passed as part of a locator
+        can be identified based on user-defined functions.
 
         Args:
         -----
@@ -281,7 +282,7 @@ class MetadataCache:
         if locator['type'] in self._type_table:
             lookup = self._type_table[locator['type']]
             if 'uid' in locator and locator['uid'] in lookup['uid']:
-                return self._cache[lookup['uid'][locator['uid']]]
+                return lookup['uid'][locator['uid']]
             if 'name' in locator and locator['name'] in lookup['name']:
                 matches = lookup['name'][locator['name']]
                 if len(matches) > 1:
@@ -292,6 +293,62 @@ class MetadataCache:
                 return matches[0]
         raise LookupError('No metadata object found with given locator')
 
+    def lookup_by_keyval(self, locator):
+        """
+        Attempts to look up a metadata object by locator information.
+        This information is based either on a type/name pair or a 
+        type/uid pair. Extra information passed as part of the
+        locator can be identified based on user-defined functions.
+
+        Args:
+        -----
+        locator: A dictionary containing a 'type' key, as well as
+            either a 'name' or 'uid' key. Extra key-value pairs
+            will be identified based on user-defined functions.
+
+        Returns:
+        --------
+        A metadata object referenced by the locator.
+
+        Raises:
+        -------
+        A LookupError if the specified metadata does not exist.
+        A RuntimeError if the locator does not include the correct
+            keys.
+        """
+        return self._cache[self._lookup_by_keyval(locator)]
+
+    def _lookup_by_filename(self, filename):
+        """
+        Internal method to lookup metadata by filename,
+        returning a cache index.
+
+        Args:
+        -----
+        filename: A Path specifying the piece of metadata to load.
+            The filename is specified relative to the root.
+
+        Returns:
+        --------
+        An integer giving the index of the metadata in self._cache
+
+        Raises:
+        -------
+        A LookupError if the specified file does not exist.
+        """
+        # Check that the file exists
+        if not (self.root_dir / filename).is_file():
+            raise LookupError('Specified metadata file does not exist!')
+        # Because it is safe to call add_metadata on a previously
+        # added piece of metadata, utilize this idempotenece!
+        self.add_metadata(filename)
+        # Lookup using the tree
+        tree_entry = self._filename_tree
+        for part in filename.parts:
+            tree_entry = tree_entry.children[part]
+        return tree_entry.metadata_index
+
+        
     def lookup_by_filename(self, filename):
         """
         Looks up a piece of metadata by filename.
@@ -309,17 +366,74 @@ class MetadataCache:
         -------
         A LookupError if the specified file does not exist.
         """
-        # Check that the file exists
-        if not (self.root_dir / filename).is_file():
-            raise LookupError('Specified metadata file does not exist!')
-        # Because it is safe to call add_metadata on a previously
-        # added piece of metadata, utilize this idempotenece!
-        self.add_metadata(filename)
-        # Lookup using the tree
+        return self._cache[self._lookup_by_filename(filename)]
+
+    def validate_parents(self, tree_location=None):
+        """
+        Verifies that all parent relationships for
+        metadata loaded under the given tree location
+        are valid.
+
+        When a tree location is not given,
+        the entire tree under the root is validated.
+
+        When passed a directory, parent information is
+        validated for all metadata files under that directory.
+        
+        When passed a single file, parent information is
+        only validated for that single file.
+
+
+        Args:
+        -----
+        tree_location: A path-like object of the search location,
+            specified relative to the root directory.
+
+        Raises:
+        -------
+        LookupError: if a parent relationship
+            is invalid (e.g. cannot be located)
+        """
+        validated = [False] * len(self._cache)
+
+        if isinstance(tree_location, str):
+            tree_location = Path(tree_location)
+
         tree_entry = self._filename_tree
-        for part in filename.parts:
-            tree_entry = tree_entry.children[part]
-        return self._cache[tree_entry.metadata_index]
+        if tree_location is not None:
+            for part in tree_location.parts:
+                if part not in tree_entry.children:
+                    return # Path not found, or has no metadata loaded
+                tree_entry = tree_entry.children[part]
+        # BFS the tree to get initial entries to check
+        file_queue = [tree_entry]
+        meta_queue = []
+        while len(file_queue) != 0:
+            idx = file_queue[0].metadata_index
+            if idx is not None:
+                meta_queue.append(idx)
+            file_queue.extend(file_queue[0].children.values())
+            del file_queue[0]
+
+        # Now that we're done BFSing the tree, start processing
+        # metadata by verifying each parent.
+        while len(meta_queue) != 0:
+            if validated[meta_queue[0]]:
+                del meta_queue[0]
+                continue
+            metadata = self._cache[meta_queue[0]]
+            for parent in metadata.parent:
+                if isinstance(parent, str):
+                    # Load by filename
+                    abspath = metadata.filename.parent / Path(parent)
+                    relpath = abspath.relative_to(self.root_dir)
+                    parent_idx = self._lookup_by_filename(relpath)
+                else:
+                    # Load by locator
+                    parent_idx = self._lookup_by_keyval(parent)
+                meta_queue.append(parent_idx)
+            validated[meta_queue[0]] = True
+            del meta_queue[0]
 
 
 def find_root_yaml(path=None):
