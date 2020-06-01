@@ -12,8 +12,8 @@ def init_cache(tmpdir):
     version of tmpdir, after creating the root.yaml file
     """
     tmpdir = Path(tmpdir.strpath)
-    touch(tmpdir / 'root.yaml')
-    cache = tame.core.MetadataCache(tmpdir / 'root.yaml')
+    touch(tmpdir / 'tame.yaml')
+    cache = tame.core.MetadataCache(tmpdir / 'tame.yaml')
     return (tmpdir, cache)
 
 def test_skip_fileloading(tmpdir):

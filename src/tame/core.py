@@ -184,7 +184,7 @@ class MetadataCache:
         for scan_root, _, files in os.walk(str(self.root_dir)):
             # Don't reload the root yaml file
             if Path(scan_root) == self.root_dir:
-                files.remove('root.yaml')
+                files.remove('tame.yaml')
             # Add any metadata files we find
             for filename in files:
                 rel_filename = (Path(scan_root) /
@@ -498,10 +498,13 @@ def find_root_yaml(path=None):
     # Keep path as-is if we were passed a directory
     try:
         if os.path.isdir(path):
+            print("It's a dir!")
             current_dir = path
         else:
+            print("It's a file")
             current_dir = os.path.dirname(path)
 
+        print(current_dir)
         while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
             up_dir = os.path.join(current_dir, os.pardir)
             # Make sure we didn't reach the filesystem root
