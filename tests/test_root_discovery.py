@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+from pathlib import Path
 
 import tame.core
 
@@ -58,4 +59,17 @@ def test_permission_denied(tmpdir):
     os.chmod(tmpdir.strpath, 0o000)
     with pytest.raises(tame.core.UntrackedRepositoryError):
         print(tame.core.find_root_yaml(os.path.join(tmpdir.strpath, 'nested', 'again', 'test.yaml')))
+
+def test_absolute_rootfind(tmpdir):
+    """
+    Makes sure we can find the root directory when given an absolute path
+    """
+    tmpdir = Path(tmpdir.strpath)
+    (tmpdir / 'subdir').mkdir()
+    (tmpdir / 'subdir' / 'tame.yaml').touch()
+
+    tame.core.find_root_yaml(str(tmpdir / 'subdir'))
+    tame.core.find_root_yaml(str((tmpdir / 'subdir').resolve()))
+    tame.core.find_root_yaml(str((tmpdir / 'subdir').resolve()) + '/')
+
 

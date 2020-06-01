@@ -6,6 +6,7 @@ Copyright (c) 2020 Christopher Johnstone
 """
 from pathlib import Path
 import os
+import sys
 import yaml
 
 
@@ -189,7 +190,8 @@ class MetadataCache:
             for filename in files:
                 rel_filename = (Path(scan_root) /
                                 Path(filename)).relative_to(self.root_dir)
-                if rel_filename.suffixes[0] == '.yaml':
+                suffixes = rel_filename.suffixes
+                if len(suffixes) > 0 and rel_filename.suffixes[0] == '.yaml':
                     self.add_metadata(rel_filename)
 
     def add_metadata(self, filename):
@@ -494,26 +496,31 @@ def find_root_yaml(path=None):
         UntrackedRepositoryError: if the search path could not find a root tame.yaml file.
     """
     if path is None:
-        path = os.getcwd()
-    # Keep path as-is if we were passed a directory
-    try:
-        if os.path.isdir(path):
-            print("It's a dir!")
-            current_dir = path
+        r_path = Path.cwd()
+    else:
+        # Ugly, ugly, ugly windows hacks. It interprets '...\' as an
+        # escaped quote...ewww
+        if sys.platform.startswith('win') and path[-1] == '"':
+            r_path = Path(path[:-1])
         else:
-            print("It's a file")
-            current_dir = os.path.dirname(path)
+            r_path = Path(path)
 
-        print(current_dir)
-        while not os.path.isfile(os.path.join(current_dir, 'tame.yaml')):
-            up_dir = os.path.join(current_dir, os.pardir)
+    try:
+        if r_path.is_dir():
+            current_dir = r_path
+        else:
+            current_dir = r_path.parent
+
+        # Resolve to an absolute path
+        current_dir = current_dir.resolve()
+        while not (current_dir / 'tame.yaml').is_file():
+            up_dir = current_dir.parent
             # Make sure we didn't reach the filesystem root
-            if os.path.samefile(os.path.realpath(up_dir),
-                                os.path.realpath(current_dir)):
+            if up_dir == current_dir:
                 raise UntrackedRepositoryError("No root 'tame.yaml' file found")
             # otherwise, continue searching
             current_dir = up_dir
-        return os.path.join(current_dir, 'tame.yaml')
+        return str(current_dir / 'tame.yaml')
     except PermissionError as error:
         print(error)
         raise UntrackedRepositoryError("No root 'tame.yaml' found due to permission denied error")

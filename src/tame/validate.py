@@ -6,7 +6,7 @@ and track currently included files.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import os
+from pathlib import Path
 
 from . import core
 
@@ -31,20 +31,30 @@ def validate_path(path, metadata_only=False):
     and all linked files are in place.
 
     Args:
-        path: path-like object (str, bytes) containing a file or
-              directory to validate
+    -----
+    path: path-like object (str, bytes) containing a file or
+          directory to validate
 
-        metadata_only: Set to true to skip verifying that linked
-                       files are in place
+    metadata_only: Set to true to skip verifying that linked
+                   files are in place
 
     Returns:
-        A list of validation failures or None if no validation failures exist.
+    --------
+    A list of validation failures or None if no validation failures exist.
 
     Raises:
-        UntrackedRepositoryError: If the given path is not within a tracked repository.
+    -------
+    UntrackedRepositoryError: If the given path is not within a tracked repository.
     """
     root = core.find_root_yaml(path)
+    cache = core.MetadataCache(root)
+    desired_path = Path(path)
+    if desired_path.is_absolute():
+        abspath = desired_path
+    else:
+        abspath = Path.cwd() / desired_path
 
-    # If this is a file, attempt to validate it
-    if os.path.isfile(path):
-        core.Metadata(filename=path)
+    relpath = abspath.relative_to(Path(root).parent)
+
+    cache.validate_chain(relpath, metadata_only)
+    # Handle LookupError and InconsistentMetadataError
