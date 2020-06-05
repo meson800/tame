@@ -4,9 +4,13 @@ import sys
 with open("README.md" ,"r", encoding='utf8') as fh:
     long_description = fh.read()
 
+if sys.platform.startswith('win'):
+    compile_args = ['-std:c++17']
+else:
+    compile_args = ['-std=c++17']
 walk_module = setuptools.Extension('_walk',
                          sources = ['src/_walk/main.cpp'],
-                         extra_compile_args = ['-std:c++17'])
+                         extra_compile_args = compile_args)
 setuptools.setup(
     name="tame",
     version="0.0.2",
