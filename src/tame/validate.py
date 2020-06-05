@@ -7,6 +7,7 @@ Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
 from pathlib import Path
+import sys
 
 from . import core
 
@@ -46,9 +47,18 @@ def validate_path(path, metadata_only=False):
     -------
     UntrackedRepositoryError: If the given path is not within a tracked repository.
     """
-    root = core.find_root_yaml(path)
+    # Ugly, ugly, ugly windows hacks. It interprets '...\' as an
+    # escaped quote...ewww
+    if sys.platform.startswith('win') and path[-1] == '"':
+        r_path = path[:-1]
+    else:
+        r_path = path
+
+    root = core.find_root_yaml(r_path)
     cache = core.MetadataCache(root)
-    desired_path = Path(path)
+
+    desired_path = Path(r_path)
+
     if desired_path.is_absolute():
         abspath = desired_path
     else:

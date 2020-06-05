@@ -6,7 +6,6 @@ Copyright (c) 2020 Christopher Johnstone
 """
 from pathlib import Path
 import os
-import sys
 import yaml
 
 
@@ -74,7 +73,15 @@ class Metadata: # pylint: disable=too-few-public-methods
             with open(str(filename)) as yaml_file:
                 yaml_source = yaml_file.read()
         # Read in with pyyaml
-        yaml_dict = yaml.safe_load(yaml_source)
+        try:
+            yaml_dict = yaml.safe_load(yaml_source)
+        except yaml.scanner.ScannerError as err:
+            if filename is None:
+                out_file = "INLINE_YAML"
+            else:
+                out_file = str(filename)
+            raise InconsistentMetadataError('Invalid YAML in file: {}\n{}'.format(
+                out_file, err))
 
         if 'type' not in yaml_dict or not isinstance(yaml_dict['type'], str):
             raise InconsistentMetadataError('Type of metadata must be provided' +
@@ -498,12 +505,7 @@ def find_root_yaml(path=None):
     if path is None:
         r_path = Path.cwd()
     else:
-        # Ugly, ugly, ugly windows hacks. It interprets '...\' as an
-        # escaped quote...ewww
-        if sys.platform.startswith('win') and path[-1] == '"':
-            r_path = Path(path[:-1])
-        else:
-            r_path = Path(path)
+        r_path = Path(path)
 
     try:
         if r_path.is_dir():
