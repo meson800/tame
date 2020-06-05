@@ -9,6 +9,7 @@ Copyright (c) 2020 Christopher Johnstone
 import cProfile, pstats, io
 from pathlib import Path
 import sys
+import _walk
 
 from . import core
 
@@ -57,6 +58,7 @@ def validate_path(path, metadata_only=False):
 
     pr = cProfile.Profile()
     pr.enable()
+    print(_walk.walk(r_path))
 
     root = core.find_root_yaml(r_path)
     cache = core.MetadataCache(root)
