@@ -1,8 +1,12 @@
 import setuptools
+import sys
 
 with open("README.md" ,"r", encoding='utf8') as fh:
     long_description = fh.read()
 
+walk_module = setuptools.Extension('_walk',
+                         sources = ['src/_walk/main.cpp'],
+                         extra_compile_args = ['-std:c++17'])
 setuptools.setup(
     name="tame",
     version="0.0.2",
@@ -14,6 +18,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["tame"],
+    ext_modules = [walk_module],
     package_dir={'': 'src'},
     entry_points={
         "console_scripts": [
