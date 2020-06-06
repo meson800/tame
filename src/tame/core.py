@@ -193,9 +193,11 @@ class MetadataCache:
         # Initiate a filesystem scan
         files_to_load = _tame_walk.walk(str(self.root_dir), '.yaml')
         files_set = {Path(f) for f in files_to_load}
-        # Don't reload the root yaml file
-        if self.root_dir / 'tame.yaml' in files_set:
-            files_set.remove(self.root_dir / 'tame.yaml')
+        # Remove the root yaml file, as it must be there.
+        if self.root_dir / 'tame.yaml' not in files_set:
+            raise RuntimeError("Loading of root file failed")
+        files_set.remove(self.root_dir / 'tame.yaml')
+
         for cur_f in files_set:
             rel_filename = cur_f.relative_to(self.root_dir)
             self.add_metadata(rel_filename)
