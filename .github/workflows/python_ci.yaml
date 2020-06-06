@@ -26,12 +26,11 @@ jobs:
     - name: Update clang (MacOS)
       run: |
         brew update
-        brew install llvm # llvm but with all the headers
-        xcode-select --install # installs additional headers that you might be mimssing.
+        brew install llvm
         echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile # exports the custom llvm path into the shell 
         sudo ln -s /usr/local/opt/llvm/bin/clang++ /usr/local/bin/clang++-brew # optional but I like to have a symlink set.
       if: matrix.os == 'macos-latest'
-    - name: Update gcc (MacOS)
+    - name: Update gcc (Linux)
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
