@@ -1,4 +1,4 @@
-#include <filesystem>
+#include "filesystem_shim.h"
 #include <string>
 #include <vector>
 
@@ -65,10 +65,10 @@ static PyObject* walk(PyObject *self, PyObject *args)
     }
     try
     {
-        for (auto& p : std::filesystem::recursive_directory_iterator(walk_start))
+        for (auto& p : fs::recursive_directory_iterator(walk_start))
         {
             bool valid = false;
-            std::filesystem::path path = p.path();
+            fs::path path = p.path();
             for (std::string const& extension : extensions)
             {
                 valid |= (path.extension().string() == extension);
