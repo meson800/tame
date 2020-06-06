@@ -8,6 +8,8 @@ from pathlib import Path
 import os
 import yaml
 
+import _tame_walk
+
 
 
 class UntrackedRepositoryError(RuntimeError):
@@ -189,17 +191,14 @@ class MetadataCache:
         self._type_table = {}
 
         # Initiate a filesystem scan
-        for scan_root, _, files in os.walk(str(self.root_dir)):
-            # Don't reload the root yaml file
-            if Path(scan_root) == self.root_dir:
-                files.remove('tame.yaml')
-            # Add any metadata files we find
-            for filename in files:
-                rel_filename = (Path(scan_root) /
-                                Path(filename)).relative_to(self.root_dir)
-                suffixes = rel_filename.suffixes
-                if len(suffixes) > 0 and rel_filename.suffixes[0] == '.yaml':
-                    self.add_metadata(rel_filename)
+        files_to_load = _tame_walk.walk(str(self.root_dir), '.yaml')
+        files_set = {Path(f) for f in files_to_load}
+        # Don't reload the root yaml file
+        if self.root_dir / 'tame.yaml' in files_set:
+            files_set.remove(self.root_dir / 'tame.yaml')
+        for cur_f in files_set:
+            rel_filename = cur_f.relative_to(self.root_dir)
+            self.add_metadata(rel_filename)
 
     def add_metadata(self, filename):
         """

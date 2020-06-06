@@ -6,10 +6,8 @@ and track currently included files.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import cProfile, pstats, io
 from pathlib import Path
 import sys
-import _walk
 
 from . import core
 
@@ -56,10 +54,6 @@ def validate_path(path, metadata_only=False):
     else:
         r_path = path
 
-    pr = cProfile.Profile()
-    pr.enable()
-    print(_walk.walk(r_path))
-
     root = core.find_root_yaml(r_path)
     cache = core.MetadataCache(root)
 
@@ -73,11 +67,4 @@ def validate_path(path, metadata_only=False):
     relpath = abspath.relative_to(Path(root).parent)
 
     cache.validate_chain(relpath, metadata_only)
-
-    pr.disable()
-    s = io.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
     # Handle LookupError and InconsistentMetadataError
