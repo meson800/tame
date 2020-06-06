@@ -8,7 +8,7 @@ if sys.platform.startswith('win'):
     compile_args = ['-std:c++17']
 else:
     compile_args = ['-std=c++17']
-walk_module = setuptools.Extension('_walk',
+walk_module = setuptools.Extension('_tame_walk',
                          sources = ['src/_walk/main.cpp'],
                          extra_compile_args = compile_args)
 setuptools.setup(
