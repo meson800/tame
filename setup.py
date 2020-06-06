@@ -8,7 +8,7 @@ if sys.platform.startswith('win'):
     compile_args = ['-std:c++17']
 else:
     # We need the c++fs library on linux
-    compile_args = ['-std=c++17', '-lstdc++fs', '-lc++experimental']
+    compile_args = ['-std=c++17']
 walk_module = setuptools.Extension('_tame_walk',
                          sources = ['src/_walk/main.cpp'],
                          extra_compile_args = compile_args)

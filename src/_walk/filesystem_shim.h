@@ -1,4 +1,9 @@
-// From https://stackoverflow.com/questions/53365538/how-to-determine-whether-to-use-filesystem-or-experimental-filesystem
+// Modified from https://stackoverflow.com/questions/53365538/how-to-determine-whether-to-use-filesystem-or-experimental-filesystem
+#if defined(__APPLE__)
+#include "filesystem_apple.h"
+namespace fs = ghc::filesystem;
+#else
+
 
 // We haven't checked which filesystem to include yet
 #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
@@ -68,3 +73,4 @@ namespace fs = std::filesystem;
 #   endif
 
 #endif // #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
+#endif // #if defined(__APPLE__)

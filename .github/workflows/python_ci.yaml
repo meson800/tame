@@ -23,13 +23,6 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Update clang (MacOS)
-      run: |
-        brew update
-        brew install llvm
-        echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile # exports the custom llvm path into the shell 
-        sudo ln -s /usr/local/opt/llvm/bin/clang++ /usr/local/bin/clang++-brew # optional but I like to have a symlink set.
-      if: matrix.os == 'macos-latest'
     - name: Update gcc (Linux)
       run: |
         sudo apt install software-properties-common
