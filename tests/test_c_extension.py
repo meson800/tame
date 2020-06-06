@@ -77,5 +77,5 @@ def test_exceptional_arg_pass(tmpdir):
         _tame_walk.walk(str(tmpdir), ['.yaml', 3.14])
 
     with pytest.raises(RuntimeError):
-        _tame_walk.walk('blahblahiamnotapath', '.yaml')
+        print(_tame_walk.walk('blahblahiamnotapath', '.yaml'))
 
