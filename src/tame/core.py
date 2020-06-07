@@ -192,7 +192,6 @@ class MetadataCache:
 
         # Initiate a filesystem scan
         files_to_load = _tame_walk.walk(str(self.root_dir), '.yaml')
-        print(files_to_load)
         files_set = {Path(f) for f in files_to_load}
         # Remove the root yaml file, as it must be there.
         if self.root_dir / 'tame.yaml' not in files_set:

@@ -65,6 +65,12 @@ static PyObject* walk(PyObject *self, PyObject *args)
     }
     try
     {
+        if (!fs::is_directory(walk_start))
+        {
+            PyErr_SetString(PyExc_RuntimeError, "Passed path "
+                    "is not a valid directory!");
+            return nullptr;
+        }
         for (auto& p : fs::recursive_directory_iterator(walk_start))
         {
             bool valid = false;
