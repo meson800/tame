@@ -3,18 +3,7 @@ import pytest
 
 import tame.core
 
-from test_helpers import touch
-
-def init_cache(tmpdir):
-    """
-    Given the temporary directory, returns a tuple
-    that encodes the MetadataCache object and a Path-ified
-    version of tmpdir, after creating the root.yaml file
-    """
-    tmpdir = Path(tmpdir.strpath)
-    touch(tmpdir / 'tame.yaml')
-    cache = tame.core.MetadataCache(tmpdir / 'tame.yaml')
-    return (tmpdir, cache)
+from test_helpers import touch, init_cache
 
 def test_simple_cache_loading(tmpdir):
     """

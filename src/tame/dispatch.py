@@ -6,6 +6,7 @@ Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
 import argparse
+import colorama
 import sys
 import pkg_resources
 from . import validate, core
@@ -35,6 +36,7 @@ def dispatch_console():
     Reads the command line args and decides what submodule
     that should be called.
     """
+    colorama.init()
     parser = argparse.ArgumentParser(description='A metadata system for humans')
     parser.add_argument('--version', action='version', version='tame v'
                         + pkg_resources.require('tame')[0].version)

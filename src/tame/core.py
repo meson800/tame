@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import yaml
 
+from . import error_format
 import _tame_walk
 
 
@@ -79,11 +80,11 @@ class Metadata: # pylint: disable=too-few-public-methods
             yaml_dict = yaml.safe_load(yaml_source)
         except yaml.scanner.ScannerError as err:
             if filename is None:
-                out_file = "INLINE_YAML"
+                out_file = None
             else:
                 out_file = str(filename)
-            raise InconsistentMetadataError('Invalid YAML in file: {}\n{}'.format(
-                out_file, err))
+            raise InconsistentMetadataError(error_format.format_yaml_error(
+                yaml_source, str(err), out_file))
 
         if 'type' not in yaml_dict or not isinstance(yaml_dict['type'], str):
             raise InconsistentMetadataError('Type of metadata must be provided' +
@@ -198,9 +199,16 @@ class MetadataCache:
             raise RuntimeError("Loading of root file failed")
         files_set.remove(self.root_dir / 'tame.yaml')
 
+        error_accum = []
         for cur_f in files_set:
             rel_filename = cur_f.relative_to(self.root_dir)
-            self.add_metadata(rel_filename)
+            try:
+                self.add_metadata(rel_filename)
+            except InconsistentMetadataError as e:
+                error_accum.append(str(e))
+        if len(error_accum) > 0:
+            raise InconsistentMetadataError('\n'.join(error_accum))
+
 
     def add_metadata(self, filename):
         """

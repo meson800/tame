@@ -38,7 +38,8 @@ setuptools.setup(
         ],
     install_requires=[
         'PyYAML',
-        'scandir;python_version<="3.4"'
+        'scandir;python_version<="3.4"',
+        'colorama'
         ],
     python_requires='>=3'
 )
