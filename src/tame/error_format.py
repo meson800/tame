@@ -10,6 +10,30 @@ from pathlib import Path
 import re
 from colorama import Fore, Style
 
+def simplify_filename(filename=None):
+    """
+    Given a filename, normalizes it relative
+    to the current working directory.
+
+    Args:
+    -----
+    filename: (optional) A string describing the source filename.
+
+    Returns:
+    --------
+    If filename is unspecified, returns 'INLINE_YAML'.
+    If the filename is specified, it is resolved and transformed
+    into a relative path relative to the current working directory.
+    """
+    if filename is None:
+        return 'INLINE_YAML'
+    try:
+        return str(Path(filename).resolve().relative_to(Path.cwd()))
+    except ValueError:
+        pass
+    return str(Path(filename).resolve())
+
+
 def format_yaml_error(yaml_source, error_str, filename=None):
     """
     Given the YAML source document and a
@@ -32,14 +56,10 @@ def format_yaml_error(yaml_source, error_str, filename=None):
     building_context = False
     location = ''
 
-    if filename is None:
-        rel_filename = 'INLINE_YAML'
-    else:
-        rel_filename = Path(filename).resolve().relative_to(Path.cwd())
+    rel_filename = simplify_filename(filename)
 
     for line in error_str.split('\n'):
         match = re.search('line (\\d+), column (\\d+)', line)
-        print(line)
         if match is not None:
             location = match.group(0)
             building_context = True
@@ -50,6 +70,27 @@ def format_yaml_error(yaml_source, error_str, filename=None):
         else:
             accum_error += ' '
             accum_error += line
-    return ('YAML parse ' + Fore.RED + 'error:' + Style.RESET_ALL
+    return (Style.BRIGHT + Fore.RED + 'YAML parse error:' + Style.RESET_ALL
             + accum_error + '\n in file {}, {}:'.format(rel_filename, location)
-            + accum_context)
+            + accum_context.replace('^', Style.BRIGHT +
+                                    Fore.RED + '^' + Style.RESET_ALL))
+
+def format_parent_error(parent_locator, error_str, filename=None):
+    """
+    Given a parent locator and the error message, gives a pretty-
+    printed version of the error message, identifying the problem
+    region.
+
+    Args:
+    -----
+    parent_locator: A parent identifier for the unidentified metadata file.
+    error_str: The string describing the exception.
+    filename: (optional) A string listing the filename of the loaded YAML.
+    """
+    rel_filename = simplify_filename(filename)
+
+    return (Style.BRIGHT + Fore.RED
+            + 'Parent lookup error:' + Style.RESET_ALL
+            + '\n in file {}, parent locator {}\n'.format(rel_filename,
+                                                          parent_locator)
+            + error_str)

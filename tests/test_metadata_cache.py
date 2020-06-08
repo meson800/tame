@@ -376,9 +376,9 @@ def test_invalid_parent(tmpdir):
         """)
 
     tmpdir, cache = init_cache(tmpdir)
-    with pytest.raises(tame.core.MetadataLookupError):
+    with pytest.raises(tame.core.InconsistentMetadataError):
         cache.validate_chain()
-    with pytest.raises(tame.core.MetadataLookupError):
+    with pytest.raises(tame.core.InconsistentMetadataError):
         cache.validate_chain(Path('bad1.yaml'))
     print('Done with lookup errors')
     cache.validate_chain(Path('subdir'))

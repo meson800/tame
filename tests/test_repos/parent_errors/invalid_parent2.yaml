@@ -1,0 +1,7 @@
+type: test
+name: invalid_parent_locators
+
+parent:
+    - {type: test, name: invalid}
+    - {type: blah}
+    - {name: valid, uid: invalid}

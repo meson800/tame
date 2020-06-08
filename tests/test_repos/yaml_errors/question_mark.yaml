@@ -1,0 +1,10 @@
+type: digest_gel
+name: test_gel
+date: 2020-02-06
+
+lanes:
+  - source: plasmid
+    enzymes:
+      - None
+    expected: ?
+    

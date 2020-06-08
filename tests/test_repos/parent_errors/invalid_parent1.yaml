@@ -1,0 +1,5 @@
+type: test
+name: invalid_parent_filename
+
+parent:
+    - invalid.yaml

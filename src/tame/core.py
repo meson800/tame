@@ -78,7 +78,8 @@ class Metadata: # pylint: disable=too-few-public-methods
         # Read in with pyyaml
         try:
             yaml_dict = yaml.safe_load(yaml_source)
-        except yaml.scanner.ScannerError as err:
+        except (yaml.scanner.ScannerError,
+                yaml.parser.ParserError) as err:
             if filename is None:
                 out_file = None
             else:
@@ -296,10 +297,13 @@ class MetadataCache:
             keys.
         """
         # Do an initial check to make sure the locator is sane
-        if 'type' not in locator and (
-                'name' not in locator or
-                'uid' not in locator):
-            raise RuntimeError('Locator does not contain required keys!')
+        if 'type' not in locator:
+            raise InconsistentMetadataError("Locator" +
+                                            " does not include" +
+                                            " the required 'type' key!")
+        if 'name' not in locator and 'uid' not in locator:
+            raise InconsistentMetadataError("Locator must include either" +
+                    " the 'name' or 'uid' key, but is missing both!")
         if locator['type'] in self._type_table:
             lookup = self._type_table[locator['type']]
             if 'uid' in locator and locator['uid'] in lookup['uid']:
@@ -308,12 +312,14 @@ class MetadataCache:
                 matches = lookup['name'][locator['name']]
                 if len(matches) > 1:
                     # Not a unique lookup
-                    error_str = ('Multiple metadata objects exist ' +
+                    error_str = ('Nonunique locator specification: ' +
+                                 ' multiple metadata objects exist ' +
                                  'with type={}, name={}').format(
                                      locator['type'], locator['name'])
                     raise MetadataLookupError(error_str)
                 return matches[0]
-        raise MetadataLookupError('No metadata object found with given locator')
+        raise MetadataLookupError('No metadata object found with ' +
+                                  'given locator')
 
     def lookup_by_keyval(self, locator):
         """
@@ -415,10 +421,9 @@ class MetadataCache:
 
         Raises:
         -------
-        MetadataLookupError: if a parent relationship
-            is invalid (e.g. cannot be located)
-        InconsistentMetadataError: If a tracked file does not
-            exist.
+        InconsistentMetadataError: If a parent
+            relationshipo is invalid or
+            if a tracked file does not exist.
         """
         validated = [False] * len(self._cache)
 
@@ -443,6 +448,7 @@ class MetadataCache:
 
         # Now that we're done BFSing the tree, start processing
         # metadata by verifying each parent.
+        accum_errors = []
         while len(meta_queue) != 0:
             if validated[meta_queue[0]]:
                 del meta_queue[0]
@@ -452,17 +458,26 @@ class MetadataCache:
                 self.verify_files(metadata)
 
             for parent in metadata.parent:
-                if isinstance(parent, str):
-                    # Load by filename
-                    abspath = metadata.filename.parent / Path(parent)
-                    relpath = abspath.relative_to(self.root_dir)
-                    parent_idx = self._lookup_by_filename(relpath)
-                else:
-                    # Load by locator
-                    parent_idx = self._lookup_by_keyval(parent)
-                meta_queue.append(parent_idx)
+                try:
+                    if isinstance(parent, str):
+                        # Load by filename
+                        abspath = metadata.filename.parent / Path(parent)
+                        relpath = abspath.relative_to(self.root_dir)
+                        parent_idx = self._lookup_by_filename(relpath)
+                    else:
+                        # Load by locator
+                        parent_idx = self._lookup_by_keyval(parent)
+                    meta_queue.append(parent_idx)
+                except MetadataLookupError as err:
+                    accum_errors.append(error_format.format_parent_error(
+                        parent, str(err), metadata.filename))
+                except InconsistentMetadataError as err:
+                    accum_errors.append(error_format.format_parent_error(
+                        parent, str(err), metadata.filename))
             validated[meta_queue[0]] = True
             del meta_queue[0]
+        if len(accum_errors) > 0:
+            raise InconsistentMetadataError('\n'.join(accum_errors))
 
     def verify_files(self, metadata):
         """
