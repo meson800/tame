@@ -11,7 +11,7 @@ def test_relative_filename_func(tmpdir):
     relative to the current working directory works
     properly.
     """
-    tmpdir = Path(tmpdir)
+    tmpdir = Path(tmpdir.strpath)
 
     assert tame.error_format.simplify_filename() == 'INLINE_YAML'
     assert (tame.error_format.simplify_filename(None) ==
