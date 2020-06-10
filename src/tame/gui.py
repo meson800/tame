@@ -5,19 +5,17 @@ built in Tame GUI.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow
+import wx
 
 def main():
     """
-    Starts the PyQT main loop.
+    Starts the wxPython main loop.
     """
-    app = QApplication(sys.argv)
+    app = wx.App()
+    frame = wx.Frame(None, title='Hello World')
+    frame.Show()
 
-    window = QMainWindow()
-    window.show()
-
-    app.exec_()
+    app.MainLoop()
 
 if __name__ == "__main__":
     main()
