@@ -28,6 +28,9 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "tame=tame.dispatch:dispatch_console"
+            ],
+        "gui_scripts": [
+            "tamegui=tame.gui:main"
             ]
         },
     classifiers=[
@@ -39,7 +42,8 @@ setuptools.setup(
     install_requires=[
         'PyYAML',
         'scandir;python_version<="3.4"',
-        'colorama'
+        'colorama',
+        'wxpython',
         ],
     python_requires='>=3'
 )
