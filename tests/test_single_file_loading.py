@@ -11,7 +11,7 @@ def test_metadata_arg_failure():
     Ensures that if we pass neither a filename or a
     metadata object, we raise the proper exception
     """
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         meta = tame.core.Metadata()
 
 def test_barebones_file(tmpdir):

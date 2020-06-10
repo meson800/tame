@@ -36,6 +36,45 @@ class MetadataLookupError(RuntimeError):
     of metadata fails, often through a missing parent
     """
 
+def _import_yaml(yaml_source=None, filename=None):
+    """
+    Given a YAML document, returns a Python dictionary
+    to the imported yaml document.
+
+    Args:
+    -----
+    yaml_source: A byte string, Unicode string, open binary file, or
+        open text file object representing the YAML document.
+    filename: A path-like object representing the on-disk location
+        of the metadata object.
+
+    Returns:
+    --------
+    A dictionary containing the parsed document.
+
+    Raises:
+    -------
+    An InconsistentMetadataError if a problem occured on loading.
+    A ValueError if neither yaml_source/filename args are given.
+    """
+    if yaml_source is None and filename is None:
+        raise ValueError('Must specify yaml source or filename to load function!')
+    if yaml_source is None:
+        with open(str(filename)) as yaml_file:
+            yaml_source = yaml_file.read()
+    # Read in with pyyaml
+    try:
+        yaml_dict = yaml.safe_load(yaml_source)
+        return yaml_dict
+    except (yaml.scanner.ScannerError,
+            yaml.parser.ParserError) as err:
+        if filename is None:
+            out_file = None
+        else:
+            out_file = str(filename)
+        raise InconsistentMetadataError(error_format.format_yaml_error(
+            str(err), out_file))
+
 class Metadata: # pylint: disable=too-few-public-methods
     """
     Class that represents a piece of metadata (e.g. a single YAML document).
@@ -69,22 +108,7 @@ class Metadata: # pylint: disable=too-few-public-methods
             InconsistentMetadataError: If the various special tags do not have
                 the correct type, or are missing if required.
         """
-        if yaml_source is None and filename is None:
-            raise RuntimeError('Must specify yaml source or filename to load function!')
-        if yaml_source is None:
-            with open(str(filename)) as yaml_file:
-                yaml_source = yaml_file.read()
-        # Read in with pyyaml
-        try:
-            yaml_dict = yaml.safe_load(yaml_source)
-        except (yaml.scanner.ScannerError,
-                yaml.parser.ParserError) as err:
-            if filename is None:
-                out_file = None
-            else:
-                out_file = str(filename)
-            raise InconsistentMetadataError(error_format.format_yaml_error(
-                str(err), out_file))
+        yaml_dict = _import_yaml(yaml_source, filename)
 
         if 'type' not in yaml_dict or not isinstance(yaml_dict['type'], str):
             raise InconsistentMetadataError('Type of metadata must be provided' +
@@ -395,6 +419,32 @@ class MetadataCache:
         """
         return self._cache[self._lookup_by_filename(filename)]
 
+    def _find_filename_tree_node(self, tree_location):
+        """
+        Given a filename tree location, returns the MetadataTree
+        object representing that path location.
+
+        Args:
+        -----
+        tree_location: A path-like object of the search location,
+            specified relative to the root directory.
+
+        Returns:
+        --------
+        A MetadataTree object, or None if no matching location found.
+        """
+        if isinstance(tree_location, str):
+            tree_location = Path(tree_location)
+
+        tree_entry = self._filename_tree
+        if tree_location is not None:
+            for part in tree_location.parts:
+                if part not in tree_entry.children:
+                    return None # Path not found, or has no metadata loaded
+                tree_entry = tree_entry.children[part]
+        return tree_entry
+
+
     def validate_chain(self, tree_location=None, should_verify_files=True):
         """
         Verifies that all parent relationships for
@@ -427,15 +477,10 @@ class MetadataCache:
         """
         validated = [False] * len(self._cache)
 
-        if isinstance(tree_location, str):
-            tree_location = Path(tree_location)
+        tree_entry = self._find_filename_tree_node(tree_location)
+        if tree_entry is None:
+            return
 
-        tree_entry = self._filename_tree
-        if tree_location is not None:
-            for part in tree_location.parts:
-                if part not in tree_entry.children:
-                    return # Path not found, or has no metadata loaded
-                tree_entry = tree_entry.children[part]
         # BFS the tree to get initial entries to check
         file_queue = [tree_entry]
         meta_queue = []
