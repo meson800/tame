@@ -5,6 +5,8 @@ import tame.error_format
 
 import pytest
 
+from test_helpers import touch
+
 def test_relative_filename_func(tmpdir):
     """
     Ensures that the function that converts filenames
@@ -17,9 +19,11 @@ def test_relative_filename_func(tmpdir):
     assert (tame.error_format.simplify_filename(None) ==
             'INLINE_YAML')
     test_path = Path.cwd() / 'test.yaml'
+    touch(test_path)
     assert (str(tame.error_format.simplify_filename(test_path)) ==
             'test.yaml')
     test_path2 = tmpdir / 'test.yaml'
+    touch(test_path2)
     assert (str(tame.error_format.simplify_filename(test_path2)) ==
             str(test_path2))
 
