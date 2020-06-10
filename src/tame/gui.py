@@ -5,7 +5,7 @@ built in Tame GUI.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-from PyQt5.QtWidgets import QApplication, QLabel
+from PySide2.QtWidgets import QApplication, QLabel
 
 def main():
     """
