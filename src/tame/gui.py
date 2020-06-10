@@ -5,17 +5,17 @@ built in Tame GUI.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import wx
+from PyQt5.QtWidgets import QApplication, QLabel
 
 def main():
     """
-    Starts the wxPython main loop.
+    Starts the PyQt5 main loop.
     """
-    app = wx.App()
-    frame = wx.Frame(None, title='Hello World') # pylint: disable=no-member
-    frame.Show()
+    app = QApplication([])
+    label = QLabel('Hello World!')
+    label.show()
 
-    app.MainLoop()
+    app.exec_()
 
 if __name__ == "__main__":
     main()
