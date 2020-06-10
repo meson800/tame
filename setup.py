@@ -43,7 +43,7 @@ setuptools.setup(
         'PyYAML',
         'scandir;python_version<="3.4"',
         'colorama',
-        'PySide2',
+        'pyside2',
         ],
     python_requires='>=3'
 )
