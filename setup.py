@@ -30,8 +30,8 @@ setuptools.setup(
             "tame=tame.dispatch:dispatch_console"
             ],
         "gui_scripts": [
-            "tamegui=tame.gui:main"
-            ]
+            'tamegui=tame.gui:main'
+            ] if sys.version_info >= (3, 6) else []
         },
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -43,7 +43,7 @@ setuptools.setup(
         'PyYAML',
         'scandir;python_version<="3.4"',
         'colorama',
-        'wxpython',
+        'wxpython;python_version>="3.6"',
         ],
     python_requires='>=3'
 )
