@@ -34,7 +34,7 @@ def simplify_filename(filename=None):
     return str(Path(filename).resolve())
 
 
-def format_yaml_error(yaml_source, error_str, filename=None):
+def format_yaml_error(error_str, filename=None):
     """
     Given the YAML source document and a
     YAML scanner error, highlights the error
@@ -42,7 +42,6 @@ def format_yaml_error(yaml_source, error_str, filename=None):
 
     Args:
     -----
-    yaml_source: A string encoding the entire YAML document.
     error_str: A ScannerError reported by the YAML parser.
     filename: (optional) A string listing the filename of the
         loaded YAML source.

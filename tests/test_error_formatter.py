@@ -47,5 +47,5 @@ def test_scanner_error():
     try:
         test_dict = yaml.safe_load(yaml_source)
     except yaml.scanner.ScannerError as err:
-        print(tame.error_format.format_yaml_error(yaml_source, str(err)))
+        print(tame.error_format.format_yaml_error(str(err)))
 

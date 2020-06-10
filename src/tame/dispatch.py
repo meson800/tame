@@ -6,8 +6,8 @@ Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
 import argparse
-import colorama
 import sys
+import colorama
 import pkg_resources
 from . import validate, core
 

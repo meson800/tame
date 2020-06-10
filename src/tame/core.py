@@ -5,11 +5,10 @@ Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
 from pathlib import Path
-import os
 import yaml
 
-from . import error_format
 import _tame_walk
+from . import error_format
 
 
 
@@ -85,7 +84,7 @@ class Metadata: # pylint: disable=too-few-public-methods
             else:
                 out_file = str(filename)
             raise InconsistentMetadataError(error_format.format_yaml_error(
-                yaml_source, str(err), out_file))
+                str(err), out_file))
 
         if 'type' not in yaml_dict or not isinstance(yaml_dict['type'], str):
             raise InconsistentMetadataError('Type of metadata must be provided' +
@@ -205,8 +204,8 @@ class MetadataCache:
             rel_filename = cur_f.relative_to(self.root_dir)
             try:
                 self.add_metadata(rel_filename)
-            except InconsistentMetadataError as e:
-                error_accum.append(str(e))
+            except InconsistentMetadataError as err:
+                error_accum.append(str(err))
         if len(error_accum) > 0:
             raise InconsistentMetadataError('\n'.join(error_accum))
 
@@ -302,8 +301,9 @@ class MetadataCache:
                                             " does not include" +
                                             " the required 'type' key!")
         if 'name' not in locator and 'uid' not in locator:
-            raise InconsistentMetadataError("Locator must include either" +
-                    " the 'name' or 'uid' key, but is missing both!")
+            error_msg = ("Locator must include either the 'name' or 'uid'" +
+                         " key, but is missing both!")
+            raise InconsistentMetadataError(error_msg)
         if locator['type'] in self._type_table:
             lookup = self._type_table[locator['type']]
             if 'uid' in locator and locator['uid'] in lookup['uid']:
@@ -395,7 +395,7 @@ class MetadataCache:
         """
         return self._cache[self._lookup_by_filename(filename)]
 
-    def validate_chain(self, tree_location=None, verify_files=True):
+    def validate_chain(self, tree_location=None, should_verify_files=True):
         """
         Verifies that all parent relationships for
         metadata loaded under the given tree location
@@ -416,7 +416,7 @@ class MetadataCache:
         -----
         tree_location: A path-like object of the search location,
             specified relative to the root directory.
-        verify_files: (Optional). If false, skips the file existence
+        should_verify_files: (Optional). If false, skips the file existence
             check.
 
         Raises:
@@ -454,8 +454,8 @@ class MetadataCache:
                 del meta_queue[0]
                 continue
             metadata = self._cache[meta_queue[0]]
-            if verify_files:
-                self.verify_files(metadata)
+            if should_verify_files:
+                verify_files(metadata)
 
             for parent in metadata.parent:
                 try:
@@ -479,37 +479,37 @@ class MetadataCache:
         if len(accum_errors) > 0:
             raise InconsistentMetadataError('\n'.join(accum_errors))
 
-    def verify_files(self, metadata):
-        """
-        Given a piece of tracked Metadata, checks that all
-        referenced files exist. To start, this checks if
-        every string given is a file that exists relative
-        to the directory that the metadata file is in.
+def verify_files(metadata):
+    """
+    Given a piece of tracked Metadata, checks that all
+    referenced files exist. To start, this checks if
+    every string given is a file that exists relative
+    to the directory that the metadata file is in.
 
-        If this fails, this attempts to check if, using glob
-        matching, there is at least one file found.
+    If this fails, this attempts to check if, using glob
+    matching, there is at least one file found.
 
-        Args:
-        -----
-        metadata: A Metadata object represent the object to check.
+    Args:
+    -----
+    metadata: A Metadata object represent the object to check.
 
-        Raises:
-        -------
-        InconsistentMetadataError: If a referenced file does not exist.
-        """
+    Raises:
+    -------
+    InconsistentMetadataError: If a referenced file does not exist.
+    """
 
-        our_dir = metadata.filename.parent
-        for filename in metadata.files:
-            try:
-                if (our_dir / filename).exists():
-                    continue
-            except OSError:
-                pass # Could be invalid glob
-            if len(list(our_dir.glob(filename))) > 0:
+    our_dir = metadata.filename.parent
+    for filename in metadata.files:
+        try:
+            if (our_dir / filename).exists():
                 continue
-            error = ('For metdata object {}, specified tracked file {}' +
-                     'does not exist.').format(str(metadata.filename), filename)
-            raise InconsistentMetadataError(error)
+        except OSError:
+            pass # Could be invalid glob
+        if len(list(our_dir.glob(filename))) > 0:
+            continue
+        error = ('For metdata object {}, specified tracked file {}' +
+                 'does not exist.').format(str(metadata.filename), filename)
+        raise InconsistentMetadataError(error)
 
 def find_root_yaml(path=None):
     """

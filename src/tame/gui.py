@@ -12,7 +12,7 @@ def main():
     Starts the wxPython main loop.
     """
     app = wx.App()
-    frame = wx.Frame(None, title='Hello World')
+    frame = wx.Frame(None, title='Hello World') # pylint: disable=no-member
     frame.Show()
 
     app.MainLoop()

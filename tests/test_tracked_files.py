@@ -30,7 +30,7 @@ def test_skip_fileloading(tmpdir):
           - invalid.gb
         """)
     tmpdir, cache = init_cache(tmpdir)
-    cache.validate_chain(verify_files=False)
+    cache.validate_chain(should_verify_files=False)
 
 def test_invalid_file_error(tmpdir):
     """
