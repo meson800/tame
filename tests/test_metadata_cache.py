@@ -20,6 +20,16 @@ def test_simple_cache_loading(tmpdir):
         """)
     cache.add_metadata(Path('test.yaml'))
 
+def test_invalid_root_finding(tmpdir):
+    """
+    Ensures that we raise a RuntimeError if called on a path
+    that does not contain a tame.yaml file
+    """
+    tmpdir = Path(tmpdir.strpath)
+    touch(tmpdir / 'test.yaml')
+    with pytest.raises(RuntimeError):
+        tame.core.MetadataCache(str(tmpdir / 'test.yaml'))
+
 def test_uid_collision(tmpdir):
     """
     Ensures that the cache loader throws an error
