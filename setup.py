@@ -43,7 +43,7 @@ setuptools.setup(
         'PyYAML',
         'scandir;python_version<="3.4"',
         'colorama',
-        'PyQt5',
+        'PyQt5==5.14.0',
         ],
     python_requires='>=3'
 )
