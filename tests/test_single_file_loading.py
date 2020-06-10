@@ -37,6 +37,15 @@ def test_barebones_yaml_source():
     meta = tame.core.Metadata(yaml_source=yaml)
     assert meta.type == 'test'
 
+def test_inline_error_loading():
+    """
+    Tests that a simple invalid inline YAML
+    file is properly handled.
+    """
+    yaml = 'test: ]['
+    with pytest.raises(tame.core.InconsistentMetadataError):
+        meta = tame.core.Metadata(yaml_source=yaml)
+
 def test_type_required():
     """
     Ensures that a YAML file without a type key fails
