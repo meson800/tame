@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import yaml
 
@@ -14,6 +15,9 @@ def test_relative_filename_func(tmpdir):
     properly.
     """
     tmpdir = Path(tmpdir.strpath)
+    (tmpdir / 'first').mkdir()
+    (tmpdir / 'second').mkdir()
+    os.chdir(str(tmpdir / 'first'))
 
     assert tame.error_format.simplify_filename() == 'INLINE_YAML'
     assert (tame.error_format.simplify_filename(None) ==
@@ -22,7 +26,7 @@ def test_relative_filename_func(tmpdir):
     touch(test_path)
     assert (str(tame.error_format.simplify_filename(test_path)) ==
             'test.yaml')
-    test_path2 = tmpdir / 'test.yaml'
+    test_path2 = tmpdir / 'second' / 'test.yaml'
     touch(test_path2)
     assert (str(tame.error_format.simplify_filename(test_path2)) ==
             str(test_path2))
