@@ -125,6 +125,7 @@ class Metadata: # pylint: disable=too-few-public-methods
 
         self.parent = {}
         self.files = []
+        self.matched_filenames = set()
         # Replace them as needed
         if 'name' in yaml_dict:
             if not isinstance(yaml_dict['name'], str):
@@ -500,7 +501,7 @@ class MetadataCache:
                 continue
             metadata = self._cache[meta_queue[0]]
             if should_verify_files:
-                verify_files(metadata)
+                self.verify_files(metadata)
 
             for parent in metadata.parent:
                 try:
@@ -524,37 +525,89 @@ class MetadataCache:
         if len(accum_errors) > 0:
             raise InconsistentMetadataError('\n'.join(accum_errors))
 
-def verify_files(metadata):
-    """
-    Given a piece of tracked Metadata, checks that all
-    referenced files exist. To start, this checks if
-    every string given is a file that exists relative
-    to the directory that the metadata file is in.
+    def describe_file(self, filename):
+        """
+        Looks up a metadata file or a tracked file, returning
+        a collection of Metadata objects describing the file.
 
-    If this fails, this attempts to check if, using glob
-    matching, there is at least one file found.
+        Args:
+        -----
+        filename: A Path object pointing to the file to describe,
+            relative to the root directory.
 
-    Args:
-    -----
-    metadata: A Metadata object represent the object to check.
+        Returns:
+        --------
+        A Metadata object. The parent key is replaced with Metadata
+        objects.
 
-    Raises:
-    -------
-    InconsistentMetadataError: If a referenced file does not exist.
-    """
-
-    our_dir = metadata.filename.parent
-    for filename in metadata.files:
+        Raises:
+        -------
+        A MetadataLookupError if the file is not tracked
+        by the metadata system.
+        """
+        # Make sure the whole tree is validated
+        # This call also checks for tracked file existence
+        self.validate_chain()
+        meta_id = None
         try:
-            if (our_dir / filename).exists():
+            meta_id = self._lookup_by_filename(filename)
+        except MetadataLookupError:
+            # Requested object is 
+            # Iterate over cache, looking in matched filenames
+            for i, meta in enumerate(self._cache):
+                if filename in meta.matched_filenames:
+                    meta_id = i
+        if meta_id is None:
+            raise MetadataLookupError('Unable ')
+
+        pass
+
+    def search_metadata(self, locators):
+        """
+        """
+        pass
+
+    def gather_files(self, base_metadata_path):
+        """
+        """
+        pass
+
+    def verify_files(self, metadata):
+        """
+        Given a piece of tracked Metadata, checks that all
+        referenced files exist. To start, this checks if
+        every string given is a file that exists relative
+        to the directory that the metadata file is in.
+
+        If this fails, this attempts to check if, using glob
+        matching, there is at least one file found.
+
+        Args:
+        -----
+        metadata: A Metadata object represent the object to check.
+
+        Raises:
+        -------
+        InconsistentMetadataError: If a referenced file does not exist.
+        """
+        our_dir = metadata.filename.parent
+        for filename in metadata.files:
+            try:
+                if (our_dir / filename).exists():
+                    matched_file = (our_dir / filename).relative_to(self.root_dir)
+                    metadata.matched_filenames.update([matched_file])
+                    continue
+            except OSError:
+                pass # Could be invalid glob
+            glob_list = list(our_dir.glob(filename))
+            if len(glob_list) > 0:
+                relative_list = [glob_file.relative_to(self.root_dir) for
+                                 glob_file in glob_list]
+                metadata.matched_filenames.update(relative_list)
                 continue
-        except OSError:
-            pass # Could be invalid glob
-        if len(list(our_dir.glob(filename))) > 0:
-            continue
-        error = ('For metdata object {}, specified tracked file {}' +
-                 'does not exist.').format(str(metadata.filename), filename)
-        raise InconsistentMetadataError(error)
+            error = ('For metdata object {}, specified tracked file {}' +
+                     'does not exist.').format(str(metadata.filename), filename)
+            raise InconsistentMetadataError(error)
 
 def find_root_yaml(path=None):
     """
