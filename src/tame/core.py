@@ -75,7 +75,7 @@ def _import_yaml(yaml_source=None, filename=None):
         raise InconsistentMetadataError(error_format.format_yaml_error(
             str(err), out_file))
 
-class Metadata: # pylint: disable=too-few-public-methods
+class Metadata: # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
     Class that represents a piece of metadata (e.g. a single YAML document).
     The only required key in a piece of metadata is its `type`, a string
@@ -124,6 +124,7 @@ class Metadata: # pylint: disable=too-few-public-methods
         self.filename = filename
 
         self.parent = {}
+        self.parent_idx = set()
         self.files = []
         self.matched_filenames = set()
         # Replace them as needed
@@ -513,6 +514,7 @@ class MetadataCache:
                     else:
                         # Load by locator
                         parent_idx = self._lookup_by_keyval(parent)
+                    metadata.parent_idx.add(parent_idx)
                     meta_queue.append(parent_idx)
                 except MetadataLookupError as err:
                     accum_errors.append(error_format.format_parent_error(
@@ -525,10 +527,101 @@ class MetadataCache:
         if len(accum_errors) > 0:
             raise InconsistentMetadataError('\n'.join(accum_errors))
 
+    def calculate_scc(self):
+        """
+        Decomposes the parent graph into strongly connected components, returning
+        this information in a object-lookup dictionary and as a list of SCC tuples.
+
+        Returns:
+        --------
+        A tuple (obj_lookup, scc_list).
+        obj_lookup: A dictionary where keys are metadata object IDs and whose values is a SCC id.
+        scc_list: A list of tuples, containing the object IDs in each SCC.
+        """
+
+        # Tarjan's strongly connected component algorithm
+        index = [-1 for _ in range(len(self._cache))]
+        lowest_link = list(index)
+        last_index = 0
+        on_stack = [False for _ in range(len(self._cache))]
+        dfs_parent = list(index)
+
+        dfs_stack = []
+        tarjan_stack = []
+
+        sccs = []
+
+        for i in range(len(self._cache)):
+            if index[i] != -1:
+                # Already visited
+                continue
+
+            # Unvisited! Run DFS
+            assert len(dfs_stack) == 0, 'DFS stack not empty, but we should be on a new tree!'
+
+            dfs_stack.append(i)
+            while len(dfs_stack) > 0:
+                v = dfs_stack[-1]
+                print('Visiting node {}, name {}'.format(v, self._cache[v].name))
+                print('DFS stack:{}'.format(dfs_stack))
+                print('Tarjan stack:{}'.format(tarjan_stack))
+
+                if on_stack[v] == True:
+                    # We've already visited this node; we must be
+                    # recursing upward. 
+
+                    # Set our lowest_link properly
+                    for w in self._cache[v].parent_idx:
+                        if dfs_parent[w] == v:
+                            lowest_link[v] = min(lowest_link[v],
+                                                 lowest_link[w])
+                        elif on_stack[w]:
+                            lowest_link[v] = min(lowest_link[v],
+                                                 index[w])
+
+                    print('Checking node {} exit: index: {}, ll: {}'.format(v, index[v], lowest_link[v]))
+                    # Identify if it's time to pop upward
+                    if lowest_link[v] == index[v]:
+                        # We located a SCC. Clean it off the Tarjan stack
+                        root_loc = tarjan_stack.index(v)
+                        scc = tarjan_stack[root_loc:]
+                        tarjan_stack = tarjan_stack[:root_loc]
+                        for idx in scc:
+                            on_stack[idx] = False
+                        print('New scc:{}'.format(scc))
+                        sccs.append(tuple(scc))
+                    # Finally, remove from the DFS stack to move on
+                    dfs_stack = dfs_stack[:-1]
+
+                if index[v] == -1:
+                    print('Newly visited node {}. Adding children: {}'.format(v, self._cache[v].parent_idx))
+                    # Unvisited as of yet. Add unvisited parents
+                    unvisited_parents = [p for p in self._cache[v].parent_idx if index[p] == -1 and p != v]
+                    for p in unvisited_parents:
+                        dfs_parent[p] = v
+                    dfs_stack.extend(unvisited_parents)
+
+                    # Add our own visit to the Tarjan stack
+                    index[v] = last_index
+                    lowest_link[v] = last_index
+                    last_index += 1
+
+                    tarjan_stack.append(v)
+                    on_stack[v] = True
+        # We already have our SCC list. Now, generate an object lookup dictionary
+        obj_lookup = {}
+        for scc_idx, scc in enumerate(sccs):
+            for idx in scc:
+                obj_lookup[idx] = scc_idx
+        return (obj_lookup, sccs)
+
+
     def describe_file(self, filename):
         """
         Looks up a metadata file or a tracked file, returning
         a collection of Metadata objects describing the file.
+
+        Ensure that the metadata tree is validated first!
 
         Args:
         -----
@@ -537,30 +630,42 @@ class MetadataCache:
 
         Returns:
         --------
-        A Metadata object. The parent key is replaced with Metadata
-        objects.
+        A tuple encoding (metadata_objects, root_idx).
+        metadata_objects is a dictionary encoding {id: Metadata}, and root_idx
+        is the id describing the root object.
 
         Raises:
         -------
         A MetadataLookupError if the file is not tracked
         by the metadata system.
         """
-        # Make sure the whole tree is validated
-        # This call also checks for tracked file existence
-        self.validate_chain()
         meta_id = None
         try:
             meta_id = self._lookup_by_filename(filename)
         except MetadataLookupError:
-            # Requested object is 
+            # Requested object is not a metadata file. Check if it is a file
             # Iterate over cache, looking in matched filenames
             for i, meta in enumerate(self._cache):
                 if filename in meta.matched_filenames:
                     meta_id = i
         if meta_id is None:
-            raise MetadataLookupError('Unable ')
+            raise MetadataLookupError('Unable to locate requested file: {}'.format(filename))
 
-        pass
+        # Collect metadata objects
+        objects = {meta_id: self._cache[meta_id]}
+        queue = self._cache[meta_id].parent_idx
+        while len(queue) > 0:
+            cur_idx = queue[0]
+            del queue[0]
+
+            if cur_idx in objects:
+                continue
+
+            # Otherwise, add a new object
+            objects[cur_idx] = self._cache[cur_idx]
+            queue.extend(list(self._cache[cur_idx].parent_idx))
+        return (objects, meta_id)
+        # Test cases: cycles, simple inheritance, etc
 
     def search_metadata(self, locators):
         """
