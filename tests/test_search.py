@@ -34,7 +34,7 @@ def generate_scc_files_and_cache(t, num_nodes, node_dict):
         cache.add_metadata(str(t / 'meta{}.yaml'.format(i)))
     
     cache.validate_chain()
-    return cache.calculate_scc()
+    return cache._calculate_scc()
 
 def test_scc_generation(tmpdir):
     """
@@ -52,6 +52,22 @@ def test_scc_generation(tmpdir):
     assert (0,) in scc[1]
     assert (1,2,3) in scc[1]
     assert (4,) in scc[1]
+
+def test_nested_cycles(tmpdir):
+    """
+    Verifies that the algorithm properly handles
+    cycles within cycles.
+    """
+    t = Path(tmpdir.strpath)
+    scc = generate_scc_files_and_cache(t, 5, {
+            0: [1],
+            1: [2, 3],
+            2: [1],
+            3: [4],
+            4: [0]})
+    assert len(scc[1]) == 1
+    for val in scc[0].values():
+        assert val == 0
 
 def test_scc_return_val_coorespondance(tmpdir):
     """
@@ -124,3 +140,150 @@ def test_self_reference(tmpdir):
     assert (0,) in scc[1]
     assert (1,) in scc[1]
     assert (2,) in scc[1]
+
+def test_kv_empty_graph(tmpdir):
+    """
+    Verifies that calculate_scc_parent_keyvals properly handles
+    an empty graph
+    """
+    t = Path(tmpdir.strpath)
+    touch(t / 'tame.yaml')
+    cache = tame.core.MetadataCache(t / 'tame.yaml')
+    scc_kv = cache.calculate_scc_parent_keyvals()
+    assert len(scc_kv[0]) == 0
+    assert len(scc_kv[1]) == 0
+
+def test_kv_tree(tmpdir):
+    """
+    Verifies that simple tree inheritance works
+    """
+    t = Path(tmpdir.strpath)
+    touch(t / 'tame.yaml')
+    cache = tame.core.MetadataCache(t / 'tame.yaml')
+
+    with open(str(t / 'meta0.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta0
+
+        parent:
+          - {type: kv_test, name: meta1}
+
+        foo: bar1
+        """)
+    with open(str(t / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta1
+
+        parent:
+          - {type: kv_test, name: meta2}
+
+        foo: overlapping_key2
+        baz: new_key
+        """)
+    with open(str(t / 'meta2.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta2
+
+        foo: another_overlap
+        baz: new_key_overlap
+        foobar: A third key approaches
+        """)
+
+    for i in range(3):
+        cache.add_metadata('meta{}.yaml'.format(i))
+    cache.validate_chain()
+    scc_kv = cache.calculate_scc_parent_keyvals()
+
+    # Zeroth key depends on both keys above it
+    assert scc_kv[1][scc_kv[0][0]] == {
+            ('kv_test', 'meta1', ''): {
+                'foo': 'overlapping_key2',
+                'baz': 'new_key'},
+            ('kv_test', 'meta2', ''): {
+                'foo': 'another_overlap',
+                'baz': 'new_key_overlap',
+                'foobar': 'A third key approaches'}}
+    # First key just dpends on meta2
+    assert scc_kv[1][scc_kv[0][1]] == {
+            ('kv_test', 'meta2', ''): {
+                'foo': 'another_overlap',
+                'baz': 'new_key_overlap',
+                'foobar': 'A third key approaches'}}
+    # Last key doesn't depend on anything
+    assert scc_kv[1][scc_kv[0][2]] == {}
+
+def test_kv_cycle(tmpdir):
+    """
+    Ensures that cycles are properly handled, in that their keys
+    are properly tradcked, along with the rest of the SCC graph.
+    """
+    t = Path(tmpdir.strpath)
+    touch(t / 'tame.yaml')
+    cache = tame.core.MetadataCache(t / 'tame.yaml')
+
+    with open(str(t / 'meta0.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta0
+
+        parent:
+          - {type: kv_test, name: meta1}
+        foo: bar0
+        """)
+    with open(str(t / 'meta1.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta1
+
+        parent:
+          - {type: kv_test, name: meta2}
+          - {type: kv_test, name: meta3}
+        foo: bar1
+        """)
+    with open(str(t / 'meta2.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta2
+
+        parent:
+          - {type: kv_test, name: meta1}
+          - {type: kv_test, name: meta4}
+        foo: bar2
+        """)
+    with open(str(t / 'meta3.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta3
+
+        foo: bar3
+        """)
+    with open(str(t / 'meta4.yaml'), 'w') as f:
+        f.write("""
+        type: kv_test
+        name: meta4
+
+        foo: bar4
+        """)
+    for i in range(5):
+        cache.add_metadata('meta{}.yaml'.format(i))
+    cache.validate_chain()
+    scc_kv = cache.calculate_scc_parent_keyvals()
+
+    # Meta objects 0, 1, and 2 all depend on all of 1/2/3/4
+    for i in range(3):
+        assert scc_kv[1][scc_kv[0][i]] == {
+                ('kv_test', 'meta1', ''): {
+                    'foo': 'bar1'},
+                ('kv_test', 'meta2', ''): {
+                    'foo': 'bar2'},
+                ('kv_test', 'meta3', ''): {
+                    'foo': 'bar3'},
+                ('kv_test', 'meta4', ''): {
+                    'foo': 'bar4'}}
+    # 3 and 4 don't depend on anything
+    assert scc_kv[1][scc_kv[0][3]] == {}
+    assert scc_kv[1][scc_kv[0][4]] == {}
+

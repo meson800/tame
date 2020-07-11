@@ -530,7 +530,7 @@ class MetadataCache:
     # Note on disabled warnings here; this is an implementation of Tarjan's SCC algorithm,
     # converted here to not be recursive. Because of these, we have a lot of branches
     # and local variables, but no logical way to break up the code.
-    def calculate_scc(self): # pylint: disable=too-many-locals,too-many-branches
+    def _calculate_scc(self): # pylint: disable=too-many-locals,too-many-branches
         """
         Decomposes the parent graph into strongly connected components, returning
         this information in a object-lookup dictionary and as a list of SCC tuples.
@@ -614,6 +614,70 @@ class MetadataCache:
                 obj_lookup[idx] = scc_idx
         return (obj_lookup, sccs)
 
+    def calculate_scc_parent_keyvals(self):
+        """
+        Traverses the metadata graph, returning a list of
+        included parent keys for every strongly connected component.
+
+        This information is sufficent to later look up all parent keys given
+        a metadata file.
+
+        Returns:
+        --------
+        A tuple (scc_mapping, keyvals_by_scc).
+            - scc_mapping: A mapping between internal cache indices and SCC.
+            - keyvals_by_scc: A dictionary containing its own nested dictionary
+                              of parent keys. Entries in this dictionary are of the form:
+
+                              (type, name, uid): included_keyvals
+
+                              where type, name, uid are base identifiers for the metadata
+                              object from which they came.
+        """
+        sccs = self._calculate_scc()
+
+        parent_vals = {i: {} for i in range(len(sccs[1]))}
+
+        def scc_edge_helper(scc_idx):
+            # Helper function to take a given SCC and calculate all edges to other SCCs.
+            parent_indices = set().union(*[set(self._cache[i].parent_idx)
+                                           for i in sccs[1][scc_idx]])
+            return (parent_indices,
+                    {sccs[0][parent] for parent in parent_indices
+                     if scc_idx != sccs[0][parent]}) # Ensure no self-referential cycles
+
+        # Perform DFS over each connected component.
+        visited = [False for _ in range(len(sccs[1]))]
+        dfs_stack = []
+        for i in range(len(sccs[1])):
+            if not visited[i]:
+                dfs_stack.append(i)
+
+            # Perform standard DFS recursion.
+            while len(dfs_stack) > 0:
+                v = dfs_stack[-1]
+                if visited[v]:
+                    # We are returning upward. Start by including
+                    # any directly included keys
+                    scc_edges = scc_edge_helper(v)
+                    for meta in scc_edges[0]:
+                        meta_obj = self._cache[meta]
+                        meta_identifier = (meta_obj.type,
+                                           meta_obj.name,
+                                           meta_obj.uid)
+                        parent_vals[v][meta_identifier] = meta_obj.data
+                    # Now union together any included SCCs.
+                    for scc in scc_edges[1]:
+                        parent_vals[v].update(parent_vals[scc])
+                    # Pop off the stack
+                    dfs_stack = dfs_stack[:-1]
+                else:
+                    # Add parents to further recurse
+                    _, scc_parents = scc_edge_helper(v)
+                    dfs_stack.extend(list(scc_parents))
+                    visited[v] = True
+
+        return (sccs[0], parent_vals)
 
     def describe_file(self, filename):
         """
