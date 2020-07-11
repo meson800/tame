@@ -3,7 +3,7 @@
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code.
-extension-pkg-whitelist=_tame_walk
+extension-pkg-whitelist=_tame_walk,PySide2
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
@@ -246,6 +246,8 @@ good-names=i,
            k,
            ex,
            Run,
+           v,
+           w,
            _
 
 # Include a hint for the correct naming format with invalid-name.

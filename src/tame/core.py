@@ -527,7 +527,10 @@ class MetadataCache:
         if len(accum_errors) > 0:
             raise InconsistentMetadataError('\n'.join(accum_errors))
 
-    def calculate_scc(self):
+    # Note on disabled warnings here; this is an implementation of Tarjan's SCC algorithm,
+    # converted here to not be recursive. Because of these, we have a lot of branches
+    # and local variables, but no logical way to break up the code.
+    def calculate_scc(self): # pylint: disable=too-many-locals,too-many-branches
         """
         Decomposes the parent graph into strongly connected components, returning
         this information in a object-lookup dictionary and as a list of SCC tuples.
@@ -561,14 +564,11 @@ class MetadataCache:
 
             dfs_stack.append(i)
             while len(dfs_stack) > 0:
+                # Start by considering node v, for edges (v,w), to match pseudocode
                 v = dfs_stack[-1]
-                print('Visiting node {}, name {}'.format(v, self._cache[v].name))
-                print('DFS stack:{}'.format(dfs_stack))
-                print('Tarjan stack:{}'.format(tarjan_stack))
-
-                if on_stack[v] == True:
+                if on_stack[v]:
                     # We've already visited this node; we must be
-                    # recursing upward. 
+                    # recursing upward.
 
                     # Set our lowest_link properly
                     for w in self._cache[v].parent_idx:
@@ -579,7 +579,6 @@ class MetadataCache:
                             lowest_link[v] = min(lowest_link[v],
                                                  index[w])
 
-                    print('Checking node {} exit: index: {}, ll: {}'.format(v, index[v], lowest_link[v]))
                     # Identify if it's time to pop upward
                     if lowest_link[v] == index[v]:
                         # We located a SCC. Clean it off the Tarjan stack
@@ -588,17 +587,16 @@ class MetadataCache:
                         tarjan_stack = tarjan_stack[:root_loc]
                         for idx in scc:
                             on_stack[idx] = False
-                        print('New scc:{}'.format(scc))
                         sccs.append(tuple(scc))
                     # Finally, remove from the DFS stack to move on
                     dfs_stack = dfs_stack[:-1]
 
                 if index[v] == -1:
-                    print('Newly visited node {}. Adding children: {}'.format(v, self._cache[v].parent_idx))
                     # Unvisited as of yet. Add unvisited parents
-                    unvisited_parents = [p for p in self._cache[v].parent_idx if index[p] == -1 and p != v]
-                    for p in unvisited_parents:
-                        dfs_parent[p] = v
+                    unvisited_parents = [parent for parent in self._cache[v].parent_idx
+                                         if index[parent] == -1 and parent != v]
+                    for parent in unvisited_parents:
+                        dfs_parent[parent] = v
                     dfs_stack.extend(unvisited_parents)
 
                     # Add our own visit to the Tarjan stack
@@ -608,6 +606,7 @@ class MetadataCache:
 
                     tarjan_stack.append(v)
                     on_stack[v] = True
+
         # We already have our SCC list. Now, generate an object lookup dictionary
         obj_lookup = {}
         for scc_idx, scc in enumerate(sccs):
