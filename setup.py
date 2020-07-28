@@ -44,6 +44,7 @@ setuptools.setup(
         'scandir;python_version<="3.4"',
         'colorama',
         'pyside2==5.15',
+        'dateparser',
         ],
     python_requires='>=3'
 )
