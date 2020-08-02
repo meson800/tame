@@ -7,6 +7,7 @@ built-in is not sufficent.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
+import datetime
 import enum
 import fnmatch
 import re
@@ -41,8 +42,8 @@ class MatchType(enum.Enum):
 
 def try_date_number_load(value):
     """
-    Attempts to interpret a value as a datetime, then as
-    a number, then finally as a string, returning
+    Attempts to interpret a value as a number, then as
+    a datetime, then finally as a string, returning
     the converted value and a flag if it is a 'comparable'
     type, that is a datetime or a string
 
@@ -56,16 +57,25 @@ def try_date_number_load(value):
     converted entry, and `is_comparable` is if the resulting
     time is comparable
     """
+    if isinstance(value, (float, int, datetime.datetime)):
+        return (value, True)
+    if isinstance(value, datetime.date):
+        return (datetime.datetime.combine(value,
+                                          datetime.time()),
+                True)
+
+    # Try interpreting as a number
     try:
-        convert_val = dateparser.parse(value)
+        convert_val = float(value)
     except ValueError:
         convert_val = None
 
     if convert_val is not None:
         return (convert_val, True)
+    # Try interpreting as a datetime
     try:
-        convert_val = float(value)
-    except ValueError:
+        convert_val = dateparser.parse(value)
+    except (TypeError, ValueError):
         convert_val = None
 
     if convert_val is not None:
@@ -182,13 +192,18 @@ class SimpleMatcher(BaseMatcher): # pylint: disable=too-few-public-methods
         A function that takes a single argument, a value to match against.
         """
         def regex_matcher(to_match_val):
-            matches = re.match(self._regex, to_match_val)
-            return matches is not None
+            try:
+                matches = re.match(self._regex, to_match_val)
+                return matches is not None
+            except TypeError:
+                return False
 
         def simple_matcher(to_match_val, operator_func):
-            matching_val = try_date_number_load(to_match_val)
+            matching_val, _ = try_date_number_load(to_match_val)
+            print(matching_val)
+            print(self._value)
             try:
-                return operator_func(self._value, matching_val)
+                return operator_func(matching_val, self._value)
             except TypeError:
                 return False
 
@@ -242,17 +257,17 @@ class SimpleMatcher(BaseMatcher): # pylint: disable=too-few-public-methods
             dicts_to_process.append(parent_keyvals)
 
         while len(dicts_to_process) > 0:
-            searcher = dicts_to_process[0]
-            for key, val in searcher:
-                if self._key is None or key == self._key:
-                    # Search these values
-                    for item in val if isinstance(val, list) else [val]:
+            dict_to_search = dicts_to_process[0]
+            for key, val in dict_to_search.items():
+                for item in val if isinstance(val, list) else [val]:
+                    if self._key is None or key == self._key:
+                        # Search these values
                         if self._matcher_func(item):
                             return True
-                if isinstance(val, dict):
-                    dicts_to_process.append(val)
-                # Cleanup dictionary queue
-                del dicts_to_process[0]
+                    if isinstance(item, dict):
+                        dicts_to_process.append(item)
+            # Cleanup dictionary queue
+            del dicts_to_process[0]
         # Nothing matched, return false
         return False
 
