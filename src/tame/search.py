@@ -7,10 +7,12 @@ built-in is not sufficent.
 Available under the MIT license.
 Copyright (c) 2020 Christopher Johnstone
 """
-import dateparser
 import enum
 import fnmatch
+import re
 import operator
+
+import dateparser
 
 class MatchType(enum.Enum):
     """
@@ -61,7 +63,6 @@ def try_date_number_load(value):
 
     if convert_val is not None:
         return (convert_val, True)
-    
     try:
         convert_val = float(value)
     except ValueError:
@@ -71,10 +72,42 @@ def try_date_number_load(value):
         return (convert_val, True)
     return (convert_val, False)
 
-class BaseMatcher:
+class BaseMatcher: # pylint: disable=too-few-public-methods
     """
-    A base class from which other matchers can be derived.
-    This class attempts to be fairly smart about how it searches;
+    A stub base class from which other matchers can be derived.
+    Inherited classes should define the `matches` function,
+    which takes a Metadata object and a parent_keyvals dictionary,
+    which represents all parent-included keyvals.
+    """
+
+    def matches(self, metadata, parent_keyvals): # pylint: disable=unused-argument, no-self-use
+        """
+        Override this function in derived matchers.
+
+        Checks if the specified piece of metadata
+        matches. For BaseMatcher, this does a
+        semi-intelligent matching that matches
+        regexes, datetime ranges, and other basic
+        behavior. This function should be defined
+        in any custom user classes that extend BaseMatcher.
+
+        Args:
+        -----
+        metadata: A Metadata object to search.
+        parent_keyvals: A nested dictionary of keyvals to
+            additionally search for matches.
+
+        Returns:
+        --------
+        A boolean True if the metadata matches, False otherwise.
+        """
+        return False
+
+
+
+class SimpleMatcher(BaseMatcher): # pylint: disable=too-few-public-methods
+    """
+    This matcher attempts to be fairly smart about how it searches;
     it does things like allowing range matching, date parsing,
     and so on.
 
@@ -83,7 +116,7 @@ class BaseMatcher:
     which represents all parent-included keyvalues.
     """
     def __init__(self, key, value,
-                 include_parents = True, match_type = MatchType.Equal):
+                 include_parents=True, match_type=MatchType.Equal):
         """
         Initalizes the BaseMatcher with the internal
         information required to search metadata objects.
@@ -115,7 +148,7 @@ class BaseMatcher:
 
         Returns:
         --------
-        An initalized BaseMatcher
+        An initalized SimpleMatcher
         """
         self._key = key
         self._include_parents = include_parents
@@ -137,6 +170,47 @@ class BaseMatcher:
             error_msg = 'Requsted ordering lookup {}, but value '
             error_msg += '{} cannot be interpreted as a date or number'
             raise ValueError(error_msg.format(self._match_type, value))
+        self._matcher_func = self._generate_matcher_func()
+
+    def _generate_matcher_func(self):
+        """
+        Generates a matcher function, given the different search types set
+        by the constructor.
+
+        Returns:
+        --------
+        A function that takes a single argument, a value to match against.
+        """
+        def regex_matcher(to_match_val):
+            matches = re.match(self._regex, to_match_val)
+            return matches is not None
+
+        def simple_matcher(to_match_val, operator_func):
+            matching_val = try_date_number_load(to_match_val)
+            try:
+                return operator_func(self._value, matching_val)
+            except TypeError:
+                return False
+
+        simple_regex_match = (self._match_type == MatchType.Equal
+                              and not self._val_is_comparable)
+
+        if simple_regex_match or self._match_type == MatchType.Regex:
+            # Just use regex matching
+            return regex_matcher
+        # No elif required, as we return out of these functions
+        if self._match_type == MatchType.Equal:
+            return lambda val: simple_matcher(val, operator.eq)
+        if self._match_type == MatchType.Less:
+            return lambda val: simple_matcher(val, operator.lt)
+        if self._match_type == MatchType.LessEqual:
+            return lambda val: simple_matcher(val, operator.le)
+        if self._match_type == MatchType.Greater:
+            return lambda val: simple_matcher(val, operator.gt)
+        if self._match_type == MatchType.GreaterEqual:
+            return lambda val: simple_matcher(val, operator.ge)
+        raise ValueError('Unable to create a matcher function for given arguments!')
+
 
     def matches(self, metadata, parent_keyvals):
         """
@@ -161,58 +235,28 @@ class BaseMatcher:
         search_dict = {'type': metadata.type, 'name': metadata.name,
                        'uid': metadata.uid, **metadata.data}
 
-        def regex_matcher(to_match_val):
-            matches = re.match(self._regex, to_match_val)
-            return (matches is not None)
-
-        def simple_matcher(to_match_val, operator_func):
-            matching_val = try_date_number_load(to_match_val)
-            try:
-                return operator_func(self._value, matching_val)
-            except TypeError:
-                return False
-
-        if ((self._match_type == MatchType.Equal and
-            not self._val_is_comparable) or
-            self._match_type == MatchType.Regex):
-            # Just use regex matching
-            matcher_func = regex_matcher
-
-        else if self._match_type == MatchType.Equal:
-            matcher_func = lambda val: simple_matcher(val, operator.eq)
-        else if self._match_type == MatchType.Less:
-            matcher_func = lambda val: simple_matcher(val, operator.lt)
-        else if self._match_type == MatchType.LessEqual:
-            matcher_func = lambda val: simple_matcher(val, operator.le)
-        else if self._match_type == MatchType.Greater:
-            matcher_func = lambda val: simple_matcher(val, operator.gt)
-        else if self._match_type == MatchType.GreaterEqual:
-            matcher_func = lambda val: simple_matcher(val, operator.ge)
-
         # Now that we have our matcher function, recursively check for a match
-        # in our dictionaries
-        for key, val in search_dict.items():
-            if self._key == None or key == self._key:
-                if matcher_func(val):
-                    return True
-
+        # in our dictionaries. If we find a list, check each list item
+        dicts_to_process = [search_dict]
         if self._include_parents:
-            dicts_to_process = [parent_keyvals]
-            while len(dicts_to_process > 0):
-                for key, val in dicts_to_process[0]:
-                    if self._key == None or key == self._key:
-                        if matcher_func(val):
-                            return True
+            dicts_to_process.append(parent_keyvals)
 
-                    # Recursively go into descendant dictionaries
-                    if isinstance(val, dict):
-                        dicts_to_process.append(val)
-                # Finally, pop this dict off
+        while len(dicts_to_process) > 0:
+            searcher = dicts_to_process[0]
+            for key, val in searcher:
+                if self._key is None or key == self._key:
+                    # Search these values
+                    for item in val if isinstance(val, list) else [val]:
+                        if self._matcher_func(item):
+                            return True
+                if isinstance(val, dict):
+                    dicts_to_process.append(val)
+                # Cleanup dictionary queue
                 del dicts_to_process[0]
         # Nothing matched, return false
         return False
 
-class AndMatcher(BaseMatcher):
+class AndMatcher(BaseMatcher): # pylint: disable=too-few-public-methods
     """
     A simple helper class that only matches if
     all of the matchers passed match the piece
@@ -256,7 +300,7 @@ class AndMatcher(BaseMatcher):
                 all_match = False
         return all_match
 
-class OrMatcher(BaseMatcher):
+class OrMatcher(BaseMatcher): # pylint: disable=too-few-public-methods
     """
     A simple helper class that matches if
     any of the matchers passed match the piece
