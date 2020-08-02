@@ -45,6 +45,7 @@ setuptools.setup(
         'colorama',
         'pyside2==5.15',
         'dateparser',
+        'python-dateutil',
         ],
     python_requires='>=3'
 )
